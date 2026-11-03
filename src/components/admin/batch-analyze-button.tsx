@@ -2,17 +2,33 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Play, Loader2, CheckCircle2 } from "lucide-react";
+import { Play, Loader2, CheckCircle2, Sparkles } from "lucide-react";
 
-export function BatchAnalyzeButton({ assignmentId, totalCount }: { assignmentId: string; totalCount: number }) {
+interface BatchAnalyzeButtonProps {
+  assignmentId: string;
+  totalCount: number;
+  unanalyzedCount?: number;
+}
+
+export function BatchAnalyzeButton({
+  assignmentId,
+  totalCount,
+  unanalyzedCount = 0,
+}: BatchAnalyzeButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [progressMsg, setProgressMsg] = useState("");
   const [resultMsg, setResultMsg] = useState("");
 
+  const needsInitialAnalysis = !loading && !resultMsg && unanalyzedCount > 0;
+
   const handleBatchAnalyze = async () => {
     if (loading) return;
-    if (!confirm(`등록된 학생 저장소 전체(${totalCount}개)에 대해 최신 소스코드 및 README 키워드를 즉시 재분석하시겠습니까?`)) {
+    if (
+      !confirm(
+        `등록된 학생 저장소 전체(${totalCount}개)에 대해 최신 소스코드 및 README 키워드를 즉시 분석하시겠습니까?`
+      )
+    ) {
       return;
     }
 
@@ -81,7 +97,13 @@ export function BatchAnalyzeButton({ assignmentId, totalCount }: { assignmentId:
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
+      {needsInitialAnalysis && (
+        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950/70 px-2.5 py-1 text-[11px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-500/30 animate-pulse">
+          <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+          <span>미분석 {unanalyzedCount}명 · 먼저 클릭해주세요 👉</span>
+        </span>
+      )}
       {loading && progressMsg && (
         <span className="text-xs text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1.5 animate-pulse">
           <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
@@ -97,7 +119,11 @@ export function BatchAnalyzeButton({ assignmentId, totalCount }: { assignmentId:
       <button
         onClick={handleBatchAnalyze}
         disabled={loading || totalCount === 0}
-        className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-500 transition disabled:opacity-50"
+        className={`inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-500 transition disabled:opacity-50 ${
+          needsInitialAnalysis
+            ? "ring-4 ring-blue-500/30 dark:ring-blue-400/30 shadow-blue-500/20 shadow-md"
+            : ""
+        }`}
       >
         {loading ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin" />

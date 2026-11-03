@@ -4,7 +4,19 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { CriteriaForm } from "@/components/admin/criteria-form";
 import { AddRepoForm } from "@/components/admin/add-repo-form";
 import { BatchAnalyzeButton } from "@/components/admin/batch-analyze-button";
-import { Download, Users, ArrowLeft, CheckCircle2, XCircle, Clock, AlertTriangle, ShieldAlert, ExternalLink, Trophy } from "lucide-react";
+import {
+  Download,
+  Users,
+  ArrowLeft,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  AlertTriangle,
+  ShieldAlert,
+  ExternalLink,
+  Trophy,
+  Sparkles,
+} from "lucide-react";
 import Link from "next/link";
 
 export default async function AdminAssignmentDetailPage({
@@ -95,12 +107,15 @@ export default async function AdminAssignmentDetailPage({
     .order("student_no", { ascending: true });
 
   const total = studentRepos?.length || 0;
+  const unanalyzedCount =
+    studentRepos?.filter((sr: any) => !sr.repo_status?.latest_snapshot_id).length || 0;
   const submittedCount =
     studentRepos?.filter((sr: any) => {
       const snapshot = sr.repo_status?.snapshots;
       const count = snapshot?.commit_count ?? (sr.commits?.length ? sr.commits.length : 0);
       return count > 0;
     }).length || 0;
+  const analyzedUnsubmittedCount = Math.max(0, total - submittedCount - unanalyzedCount);
 
   // Find active criteria version rules
   const activeVersion = assignment.criteria_versions?.find(
@@ -113,13 +128,15 @@ export default async function AdminAssignmentDetailPage({
       <Navbar />
 
       <main className="mx-auto max-w-5xl px-4 py-8 space-y-6">
-        <Link
-          href="/admin"
-          className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>과제 목록으로</span>
-        </Link>
+        <div>
+          <Link
+            href="/admin"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>뒤로가기 (과제 관리 목록)</span>
+          </Link>
+        </div>
 
         {/* Top Header & Actions */}
         <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-4">
@@ -165,10 +182,16 @@ export default async function AdminAssignmentDetailPage({
               <CheckCircle2 className="w-4 h-4" />
               <span>제출 완료: <strong>{submittedCount}명</strong></span>
             </div>
-            <div className="flex items-center gap-1.5 font-medium text-amber-600">
-              <AlertTriangle className="w-4 h-4" />
-              <span>미완료: <strong>{total - submittedCount}명</strong></span>
+            <div className="flex items-center gap-1.5 font-medium text-red-500">
+              <XCircle className="w-4 h-4" />
+              <span>미제출: <strong>{analyzedUnsubmittedCount}명</strong></span>
             </div>
+            {unanalyzedCount > 0 && (
+              <div className="flex items-center gap-1.5 font-semibold text-amber-600 dark:text-amber-400">
+                <Clock className="w-4 h-4" />
+                <span>분석 대기(미분석): <strong>{unanalyzedCount}명</strong></span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -179,20 +202,44 @@ export default async function AdminAssignmentDetailPage({
         />
 
         {/* Student Submission Status Table */}
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden space-y-3 p-5">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden space-y-4 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="font-bold text-base">학생별 제출 및 분석 현황</h2>
               <span className="text-xs text-slate-500">총 {total}명 등록됨</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <BatchAnalyzeButton
                 assignmentId={assignment.id}
                 totalCount={total}
+                unanalyzedCount={unanalyzedCount}
               />
               <AddRepoForm assignmentId={assignment.id} orgName={assignment.org_name} />
             </div>
           </div>
+
+          {/* Unanalyzed Repos Callout Banner */}
+          {unanalyzedCount > 0 && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-blue-200 dark:border-blue-900/70 bg-gradient-to-r from-blue-50/90 to-indigo-50/70 dark:from-blue-950/40 dark:to-indigo-950/30 p-4 text-xs">
+              <div className="flex items-start gap-2.5">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white shrink-0 mt-0.5">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div className="space-y-0.5">
+                  <p className="font-bold text-blue-950 dark:text-blue-200">
+                    아직 분석되지 않은 학생 저장소가 {unanalyzedCount}개 있습니다!
+                  </p>
+                  <p className="text-blue-800/90 dark:text-blue-300/90 leading-relaxed">
+                    처음 과제를 등록했거나 최신 제출 결과를 확인하려면 우측 상단의{" "}
+                    <strong className="underline decoration-blue-500/60 underline-offset-2">
+                      [▶ 분석하기]
+                    </strong>{" "}
+                    버튼을 먼저 눌러주세요. 분석이 완료되면 실제 제출 여부, 커밋 수, README 키워드 통과 현황이 즉시 반영됩니다.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
@@ -213,23 +260,34 @@ export default async function AdminAssignmentDetailPage({
                   studentRepos.map((sr: any) => {
                     const status = sr.repo_status;
                     const snapshot = status?.snapshots;
+                    const hasSnapshot = Boolean(status?.latest_snapshot_id && snapshot);
                     const evals = snapshot?.evaluations;
                     const latestEval = Array.isArray(evals) ? evals[0] : evals;
-                    const isSubmitted = latestEval?.submitted ?? false;
                     const readmeResults = latestEval?.readme_results;
                     const details = readmeResults?.details || [];
-                    const activeKeywords = activeVersion?.rules?.readme?.headerKeywords || activeVersion?.rules?.readmeKeywords || [];
-                    const totalKeywords = details.length > 0 ? details.length : activeKeywords.length;
-                    const passedCount = details.length > 0
-                      ? details.filter((d: any) => d.found).length
-                      : (readmeResults?.satisfied ? totalKeywords : 0);
-                    const commitCount = snapshot?.commit_count ?? (sr.commits?.length ? sr.commits.length : 0);
+                    const activeKeywords =
+                      activeVersion?.rules?.readme?.headerKeywords ||
+                      activeVersion?.rules?.readmeKeywords ||
+                      [];
+                    const totalKeywords =
+                      details.length > 0 ? details.length : activeKeywords.length;
+                    const passedCount =
+                      details.length > 0
+                        ? details.filter((d: any) => d.found).length
+                        : readmeResults?.satisfied
+                        ? totalKeywords
+                        : 0;
+                    const commitCount =
+                      snapshot?.commit_count ??
+                      (sr.commits?.length ? sr.commits.length : 0);
 
-                    // Find latest commit push time
+                    // Find latest commit push time (only from actual commits, not initial status creation)
                     let lastPushTime = "-";
                     if (sr.commits && sr.commits.length > 0) {
                       const sorted = [...sr.commits].sort(
-                        (a: any, b: any) => new Date(b.committed_at).getTime() - new Date(a.committed_at).getTime()
+                        (a: any, b: any) =>
+                          new Date(b.committed_at).getTime() -
+                          new Date(a.committed_at).getTime()
                       );
                       const latestDate = new Date(sorted[0].committed_at);
                       lastPushTime = latestDate.toLocaleString("ko-KR", {
@@ -240,7 +298,7 @@ export default async function AdminAssignmentDetailPage({
                         minute: "2-digit",
                         hour12: false,
                       });
-                    } else if (snapshot?.observed_at) {
+                    } else if (hasSnapshot && commitCount > 0 && snapshot?.observed_at) {
                       lastPushTime = new Date(snapshot.observed_at).toLocaleString("ko-KR", {
                         year: "numeric",
                         month: "2-digit",
@@ -272,6 +330,11 @@ export default async function AdminAssignmentDetailPage({
                               <CheckCircle2 className="w-3.5 h-3.5" />
                               <span>제출</span>
                             </span>
+                          ) : !hasSnapshot ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300 ring-1 ring-amber-500/20">
+                              <Clock className="w-3 h-3" />
+                              <span>분석 대기</span>
+                            </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-red-500 font-medium">
                               <XCircle className="w-3.5 h-3.5" />
@@ -280,7 +343,9 @@ export default async function AdminAssignmentDetailPage({
                           )}
                         </td>
                         <td className="px-3 py-2.5 font-medium">
-                          {minCommits > 0 ? (
+                          {!hasSnapshot && commitCount === 0 ? (
+                            <span className="text-slate-400">-</span>
+                          ) : minCommits > 0 ? (
                             commitCount >= minCommits ? (
                               <span className="text-emerald-600 font-semibold">
                                 {commitCount} / {minCommits}개
@@ -297,11 +362,11 @@ export default async function AdminAssignmentDetailPage({
                               {commitCount}개
                             </span>
                           ) : (
-                            <span className="text-slate-400">-</span>
+                            <span className="text-slate-400">0개</span>
                           )}
                         </td>
                         <td className="px-3 py-2.5">
-                          {commitCount === 0 || totalKeywords === 0 ? (
+                          {!hasSnapshot || commitCount === 0 || totalKeywords === 0 ? (
                             <span className="text-slate-400">-</span>
                           ) : passedCount === totalKeywords ? (
                             <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold">
