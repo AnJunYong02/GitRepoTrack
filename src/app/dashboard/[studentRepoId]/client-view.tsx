@@ -54,13 +54,13 @@ export function ClientDashboardView({ studentRepoId, initialData }: ClientDashbo
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex items-center justify-between">
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>내 과제 목록으로 돌아가기</span>
+          <ArrowLeft className="w-4 h-4" />
+          <span>뒤로가기 (내 과제 목록)</span>
         </Link>
       </div>
 
@@ -82,7 +82,7 @@ export function ClientDashboardView({ studentRepoId, initialData }: ClientDashbo
             <h1 className="text-2xl font-bold mt-2">{data.assignment?.title}</h1>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => handleAnalyze(false)}
               disabled={loading}
