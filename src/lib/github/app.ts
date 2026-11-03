@@ -3,6 +3,13 @@ import { createAppAuth } from "@octokit/auth-app";
 
 let appOctokitInstance: Octokit | null = null;
 
+export interface InstalledOrgInfo {
+  login: string;
+  avatarUrl?: string;
+  htmlUrl?: string;
+  accountType?: string;
+}
+
 /**
  * Normalizes an organization name/URL into a plain slug.
  * e.g., "https://github.com/2026-2-WebService" -> "2026-2-WebService"
@@ -13,7 +20,12 @@ export function normalizeOrgName(input?: string): string {
     .trim()
     .replace(/^https?:\/\/github\.com\//i, "")
     .replace(/\/+$/, "")
+    .split("/")[0]
     .trim();
+}
+
+export function getDefaultOrgName(): string {
+  return normalizeOrgName(process.env.GITHUB_ORG_NAME || "2026-2-WebService");
 }
 
 /**
@@ -72,6 +84,59 @@ export function getAppOctokit(): Octokit {
   });
 
   return appOctokitInstance;
+}
+
+let installedOrgsCache: {
+  data: InstalledOrgInfo[];
+  expiresAt: number;
+} | null = null;
+
+const INSTALLED_ORGS_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+export async function listInstalledOrganizations(
+  forceRefresh = false
+): Promise<InstalledOrgInfo[]> {
+  const appId = process.env.GITHUB_APP_ID;
+  const privateKey = formatPrivateKey(process.env.GITHUB_APP_PRIVATE_KEY);
+  if (!appId || !privateKey) {
+    return [];
+  }
+
+  if (
+    !forceRefresh &&
+    installedOrgsCache &&
+    Date.now() < installedOrgsCache.expiresAt
+  ) {
+    return installedOrgsCache.data;
+  }
+
+  try {
+    const app = getAppOctokit();
+    const { data: installations } = await app.rest.apps.listInstallations({
+      per_page: 100,
+    });
+
+    const result: InstalledOrgInfo[] = [];
+    for (const inst of installations) {
+      const account: any = inst.account;
+      if (account?.login) {
+        result.push({
+          login: account.login,
+          avatarUrl: account.avatar_url,
+          htmlUrl: account.html_url || `https://github.com/${account.login}`,
+          accountType: account.type || "Organization",
+        });
+      }
+    }
+    installedOrgsCache = {
+      data: result,
+      expiresAt: Date.now() + INSTALLED_ORGS_TTL_MS,
+    };
+    return result;
+  } catch (err: any) {
+    console.warn("[listInstalledOrganizations] Could not fetch installations:", err.message);
+    return installedOrgsCache?.data || [];
+  }
 }
 
 export async function getInstallationOctokit(orgName?: string): Promise<Octokit> {

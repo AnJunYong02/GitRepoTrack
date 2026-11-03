@@ -5,12 +5,14 @@ import {
   saveStudentNoToMetadata,
   syncReposForStudent,
 } from "@/lib/student/sync-student-repos";
+import { resolveActiveOrg } from "@/lib/org/active-org";
 
 export async function POST(req: Request) {
   try {
     const { user, profile } = await requireUser();
     const body = await req.json();
     const rawStudentNo = String(body.studentNo || "").trim();
+    const targetOrg = await resolveActiveOrg(body.orgName);
 
     if (!/^[0-9]{6,10}$/.test(rawStudentNo)) {
       return NextResponse.json(
@@ -62,14 +64,16 @@ export async function POST(req: Request) {
     // Save to user_metadata
     await saveStudentNoToMetadata(user.id, user.user_metadata, rawStudentNo);
 
-    // Sync from DB and GitHub Organization
+    // Sync from DB and selected GitHub Organization
     const result = await syncReposForStudent(user.id, profile?.github_id, rawStudentNo, {
       scanOrgRepos: true,
+      orgName: targetOrg,
     });
 
     return NextResponse.json({
       success: true,
       studentNo: rawStudentNo,
+      orgName: targetOrg,
       linkedCount: result.linkedCount,
       syncedFromOrg: result.syncedFromOrg,
     });

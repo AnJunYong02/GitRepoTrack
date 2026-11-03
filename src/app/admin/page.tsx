@@ -2,11 +2,30 @@ import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { getCurrentUser } from "@/lib/auth/guards";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { normalizeCategoryKey } from "@/lib/github/repo-parser";
+import {
+  getAvailableOrganizations,
+  resolveActiveOrg,
+} from "@/lib/org/active-org";
+import { OrganizationSwitcher } from "@/components/org-switcher";
 import { OrgRepoBrowser } from "@/components/admin/org-repo-browser";
-import { Plus, Shield, ArrowRight, Users, ShieldAlert, ArrowLeft, RefreshCw, Trophy } from "lucide-react";
+import {
+  AdminAssignmentList,
+  AdminAssignmentItemData,
+} from "@/components/admin/admin-assignment-list";
+import { Plus, Shield, ShieldAlert, ArrowLeft, RefreshCw } from "lucide-react";
 
-export default async function AdminAssignmentsPage() {
-  const current = await getCurrentUser();
+export default async function AdminAssignmentsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ org?: string }>;
+}) {
+  const sp = searchParams ? await searchParams : undefined;
+  const activeOrg = await resolveActiveOrg(sp?.org);
+  const [current, organizations] = await Promise.all([
+    getCurrentUser(),
+    getAvailableOrganizations(activeOrg),
+  ]);
 
   if (!current) {
     return (
@@ -90,7 +109,7 @@ export default async function AdminAssignmentsPage() {
     );
   }
 
-  // Fetch assignments with student counts
+  // Fetch assignments with student counts and snapshot status
   const { data: assignments } = await supabaseAdmin
     .from("assignments")
     .select(`
@@ -104,15 +123,52 @@ export default async function AdminAssignmentsPage() {
       student_repos (
         id,
         repo_status (
+          latest_snapshot_id,
           snapshots:latest_snapshot_id (
-            evaluations (
-              submitted
-            )
+            commit_count
           )
         )
       )
     `)
     .order("created_at", { ascending: false });
+
+  // Filter assignments by activeOrg (case-insensitive) and sort newest category first
+  const orgFilteredAssignments = (assignments || []).filter(
+    (a: any) => (a.org_name || "").toLowerCase() === activeOrg.toLowerCase()
+  );
+
+  const sortedAssignments = [...orgFilteredAssignments].sort((a: any, b: any) => {
+    const keyA = normalizeCategoryKey(a.title || "");
+    const keyB = normalizeCategoryKey(b.title || "");
+    if (keyA !== keyB) {
+      return keyB.localeCompare(keyA);
+    }
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
+  const assignmentItems: AdminAssignmentItemData[] = sortedAssignments.map((a: any) => {
+    const repos = a.student_repos || [];
+    const totalStudents = repos.length;
+    const submittedStudents = repos.filter((sr: any) => {
+      const commitCount = sr.repo_status?.snapshots?.commit_count ?? 0;
+      return commitCount > 0;
+    }).length;
+    const unanalyzedStudents = repos.filter(
+      (sr: any) => !sr.repo_status?.latest_snapshot_id
+    ).length;
+
+    return {
+      id: a.id,
+      title: a.title,
+      orgName: a.org_name,
+      branch: a.branch,
+      rankingMode: a.ranking_mode === "none" ? "none" : "live",
+      deadlineFormatted: new Date(a.deadline_at).toLocaleDateString("ko-KR"),
+      totalStudents,
+      submittedStudents,
+      unanalyzedStudents,
+    };
+  });
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -132,7 +188,7 @@ export default async function AdminAssignmentsPage() {
           </div>
 
           <Link
-            href="/admin/assignments/new"
+            href={`/admin/assignments/new?org=${encodeURIComponent(activeOrg)}`}
             className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500"
           >
             <Plus className="w-4 h-4" />
@@ -140,96 +196,19 @@ export default async function AdminAssignmentsPage() {
           </Link>
         </div>
 
-        {/* 1. Organization 275 Repos Browser & Categorizer */}
-        <OrgRepoBrowser />
+        {/* Multi-Organization Switcher */}
+        <OrganizationSwitcher
+          activeOrg={activeOrg}
+          organizations={organizations}
+          basePath="/admin"
+          role="staff"
+        />
 
-        {/* 2. Registered Assignments List */}
-        <div className="space-y-4 pt-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold tracking-tight">등록된 과제 목록</h2>
-            <span className="text-xs text-slate-500">총 {assignments?.length || 0}개 과제 운영 중</span>
-          </div>
+        {/* 1. Organization Repos Browser & Categorizer */}
+        <OrgRepoBrowser activeOrg={activeOrg} />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {assignments && assignments.length > 0 ? (
-            assignments.map((a: any) => {
-              const totalStudents = a.student_repos?.length || 0;
-              const submittedStudents =
-                a.student_repos?.filter((sr: any) => {
-                  const evals = sr.repo_status?.snapshots?.evaluations;
-                  const latestEval = Array.isArray(evals) ? evals[0] : evals;
-                  return latestEval?.submitted === true;
-                }).length || 0;
-
-              return (
-                <div
-                  key={a.id}
-                  className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-4 hover:border-indigo-400 transition"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-bold text-base">{a.title}</h3>
-                      <p className="text-xs text-slate-500 mt-0.5">Org: {a.org_name} · Branch: {a.branch}</p>
-                    </div>
-                    <span className="rounded bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:text-slate-300">
-                      {a.ranking_mode === "live" ? "순위표 활성" : "일반 과제"}
-                    </span>
-                  </div>
-
-                  {/* Submission Progress */}
-                  <div className="space-y-1.5 border-t border-slate-100 dark:border-slate-800 pt-3">
-                    <div className="flex justify-between text-xs font-medium">
-                      <span className="flex items-center gap-1 text-slate-500">
-                        <Users className="w-3.5 h-3.5" />
-                        제출율
-                      </span>
-                      <span className="text-slate-700 dark:text-slate-300">
-                        <strong>{submittedStudents}</strong> / {totalStudents}명 ({totalStudents ? Math.round((submittedStudents / totalStudents) * 100) : 0}%)
-                      </span>
-                    </div>
-                    <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                      <div
-                        className="h-full bg-emerald-500 rounded-full transition-all"
-                        style={{
-                          width: `${totalStudents ? (submittedStudents / totalStudents) * 100 : 0}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2">
-                    <span className="text-xs text-slate-400">
-                      마감: {new Date(a.deadline_at).toLocaleDateString("ko-KR")}
-                    </span>
-
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/assignments/${a.id}/leaderboard`}
-                        className="inline-flex items-center gap-1 rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 px-2.5 py-1.5 text-xs font-semibold hover:bg-amber-100 transition"
-                      >
-                        <Trophy className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                        <span>순위표</span>
-                      </Link>
-
-                      <Link
-                        href={`/admin/assignments/${a.id}`}
-                        className="inline-flex items-center gap-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 px-3 py-1.5 text-xs font-semibold hover:bg-indigo-100 transition"
-                      >
-                        <span>현황 관리</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <div className="col-span-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-800 p-12 text-center text-slate-400 text-sm">
-              등록된 과제가 없습니다. 우측 상단의 &quot;새 과제 직접 등록&quot; 버튼을 누르거나 위에서 Organization 과제를 일괄 등록하세요.
-            </div>
-          )}
-        </div>
-        </div>
+        {/* 2. Registered Assignments List with Google Drive Style Layout Toggle */}
+        <AdminAssignmentList items={assignmentItems} />
       </main>
     </div>
   );

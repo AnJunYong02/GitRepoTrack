@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Navbar } from "@/components/navbar";
 import { ArrowLeft, Save, AlertCircle } from "lucide-react";
 import Link from "next/link";
 
@@ -15,6 +14,23 @@ export default function NewAssignmentPage() {
   const [rankingMode, setRankingMode] = useState<"live" | "none">("live");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const queryOrg = params.get("org")?.trim();
+    if (queryOrg) {
+      setOrgName(queryOrg);
+      return;
+    }
+    fetch("/api/organizations")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.activeOrg) {
+          setOrgName((prev) => prev || data.activeOrg);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
