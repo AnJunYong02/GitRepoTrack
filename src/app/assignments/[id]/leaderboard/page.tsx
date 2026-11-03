@@ -32,6 +32,17 @@ export default async function LeaderboardPage({
     );
   }
 
+  if (assignment.ranking_mode === "none" && !isStaff) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+        <Navbar />
+        <div className="p-8 text-center text-sm text-slate-500">
+          해당 과제는 순위표가 비활성화되어 있습니다.
+        </div>
+      </div>
+    );
+  }
+
   // Active criteria
   const activeVersion = assignment.criteria_versions?.find(
     (cv: any) => cv.id === assignment.current_criteria_version_id
@@ -88,7 +99,11 @@ export default async function LeaderboardPage({
     let firstSatisfiedAt = status?.first_satisfied_at || null;
     if (isQualified && !firstSatisfiedAt) {
       if (sr.commits && sr.commits.length > 0) {
-        firstSatisfiedAt = sr.commits[0].committedAt;
+        const sortedCommits = [...sr.commits].sort(
+          (a: any, b: any) =>
+            new Date(a.committed_at).getTime() - new Date(b.committed_at).getTime()
+        );
+        firstSatisfiedAt = sortedCommits[0]?.committed_at || null;
       } else if (snapshot?.observed_at) {
         firstSatisfiedAt = snapshot.observed_at;
       }
@@ -156,13 +171,15 @@ export default async function LeaderboardPage({
       <Navbar />
 
       <main className="mx-auto max-w-4xl px-4 py-8 space-y-6">
-        <Link
-          href={isStaff ? `/admin/assignments/${assignment.id}` : "/dashboard"}
-          className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>{isStaff ? "과제 관리 화면으로 돌아가기" : "내 과제 목록으로"}</span>
-        </Link>
+        <div>
+          <Link
+            href={isStaff ? `/admin/assignments/${assignment.id}` : "/dashboard"}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>{isStaff ? "뒤로가기 (과제 관리 화면)" : "뒤로가기 (내 과제 목록)"}</span>
+          </Link>
+        </div>
 
         {/* Top Header Card */}
         <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-2">
