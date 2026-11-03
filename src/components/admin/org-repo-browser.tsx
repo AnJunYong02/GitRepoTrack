@@ -16,6 +16,7 @@ import {
   Layers,
   Sparkles,
   ArrowRight,
+  Clock,
 } from "lucide-react";
 import { ParsedRepoInfo } from "@/lib/github/repo-parser";
 
@@ -30,37 +31,60 @@ interface CategoryData {
   existingRepoCount?: number;
 }
 
-export function OrgRepoBrowser() {
+interface OrgRepoBrowserProps {
+  activeOrg?: string;
+}
+
+export function OrgRepoBrowser({
+  activeOrg = "2026-2-WebService",
+}: OrgRepoBrowserProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [elapsedMs, setElapsedMs] = useState(0);
   const [importingCat, setImportingCat] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [orgName, setOrgName] = useState("2026-2-WebService");
+  const [orgName, setOrgName] = useState(activeOrg);
   const [totalRepos, setTotalRepos] = useState(0);
   const [categories, setCategories] = useState<CategoryData[]>([]);
   const [expandedCats, setExpandedCats] = useState<Record<string, boolean>>({});
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  const fetchData = async () => {
+  // Live 0.1s ticking stopwatch while loading/refreshing
+  useEffect(() => {
+    if (!loading) {
+      setElapsedMs(0);
+      return;
+    }
+    const startedAt = Date.now();
+    setElapsedMs(0);
+    const timer = setInterval(() => {
+      setElapsedMs(Date.now() - startedAt);
+    }, 100);
+    return () => clearInterval(timer);
+  }, [loading]);
+
+  const fetchData = async (targetOrg = activeOrg, forceRefresh = false) => {
     setLoading(true);
     setErrorMsg("");
+    setOrgName(targetOrg);
     try {
-      const res = await fetch("/api/admin/org-repos");
+      const refreshParam = forceRefresh ? "&refresh=1" : "";
+      const res = await fetch(
+        `/api/admin/org-repos?org=${encodeURIComponent(targetOrg)}${refreshParam}`
+      );
       const data = await res.json();
       if (!res.ok) {
+        setCategories([]);
+        setTotalRepos(0);
         throw new Error(data.error || "조직 저장소 목록 조회 실패");
       }
       setOrgName(data.orgName);
       setTotalRepos(data.totalRepos);
       setCategories(data.categories || []);
 
-      // Expand the first 2 student categories by default
-      const initialExpanded: Record<string, boolean> = {};
-      data.categories?.slice(0, 2).forEach((c: CategoryData) => {
-        initialExpanded[c.category] = true;
-      });
-      setExpandedCats(initialExpanded);
+      // Keep all categories collapsed by default so the list looks neat and organized
+      setExpandedCats({});
     } catch (err: any) {
       setErrorMsg(err.message || "오류가 발생했습니다.");
     } finally {
@@ -69,8 +93,9 @@ export function OrgRepoBrowser() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    setSuccessMsg("");
+    fetchData(activeOrg, false);
+  }, [activeOrg]);
 
   const toggleCategory = (cat: string) => {
     setExpandedCats((prev) => ({
@@ -91,6 +116,7 @@ export function OrgRepoBrowser() {
         body: JSON.stringify({
           category: catData.category,
           title: catData.label,
+          orgName: activeOrg,
           repos: catData.repos,
         }),
       });
@@ -156,12 +182,16 @@ export function OrgRepoBrowser() {
           </div>
 
           <button
-            onClick={fetchData}
+            onClick={() => fetchData(activeOrg, true)}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-sm disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-sm disabled:opacity-70"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-            <span>새로고침</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-indigo-600" : ""}`} />
+            <span>
+              {loading
+                ? `새로고침 중... (${(elapsedMs / 1000).toFixed(1)}초)`
+                : "새로고침"}
+            </span>
           </button>
         </div>
 
@@ -200,12 +230,83 @@ export function OrgRepoBrowser() {
 
       {/* Body: Categories list */}
       <div className="divide-y divide-slate-100 dark:divide-slate-800">
-        {loading && categories.length === 0 ? (
-          <div className="p-12 text-center text-xs text-slate-400 flex flex-col items-center gap-2">
-            <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
-            <span>Organization 저장소(275개)를 분석 및 분류하는 중입니다...</span>
+        {loading && (
+          <div className="p-6 sm:p-8 bg-indigo-50/30 dark:bg-indigo-950/20">
+            <div className="mx-auto max-w-md space-y-4 text-center">
+              {/* Live Elapsed Stopwatch Pill */}
+              <div className="inline-flex items-center gap-2 rounded-full bg-white dark:bg-slate-900 px-3.5 py-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-indigo-500/20">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>새로고침 및 저장소 스캔 중...</span>
+                <span
+                  aria-hidden="true"
+                  className="inline-flex items-center gap-1 rounded-full bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 font-mono text-[11px] text-indigo-700 dark:text-indigo-300"
+                >
+                  <Clock className="w-3 h-3" />
+                  {(elapsedMs / 1000).toFixed(1)}초 경과
+                </span>
+              </div>
+
+              {/* Dynamic Stage Message */}
+              <div className="space-y-1" aria-live="polite">
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                  {elapsedMs < 700
+                    ? `1/3단계: GitHub Organization (${orgName}) 연결 및 인증 확인 중...`
+                    : elapsedMs < 1800
+                    ? `2/3단계: ${orgName} 내 학생 과제 저장소 목록을 불러오는 중...`
+                    : `3/3단계: 과제 카테고리(assign01~) 및 학번 자동 파싱·분류 마무리 중...`}
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  GitHub API로부터 최신 저장소 상태를 안전하게 동기화하고 있습니다. 잠시만 기다려주세요!
+                </p>
+              </div>
+
+              {/* Smooth Animated Progress Bar */}
+              <div className="w-full h-2 rounded-full bg-slate-200/80 dark:bg-slate-800 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-blue-500 to-indigo-600 transition-all duration-150 ease-out"
+                  style={{
+                    width: `${Math.min(
+                      94,
+                      Math.max(15, Math.round((1 - Math.exp(-elapsedMs / 1400)) * 95))
+                    )}%`,
+                  }}
+                />
+              </div>
+
+              {/* 3-Step Indicator Dots */}
+              <div className="grid grid-cols-3 gap-2 pt-1 text-[10px] font-medium">
+                <div
+                  className={`rounded-lg py-1.5 px-2 border transition ${
+                    elapsedMs >= 0
+                      ? "border-indigo-200 dark:border-indigo-800 bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 font-semibold"
+                      : "border-slate-100 text-slate-400"
+                  }`}
+                >
+                  1. Org 인증 연결
+                </div>
+                <div
+                  className={`rounded-lg py-1.5 px-2 border transition ${
+                    elapsedMs >= 700
+                      ? "border-indigo-200 dark:border-indigo-800 bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 font-semibold"
+                      : "border-slate-100 dark:border-slate-800 text-slate-400"
+                  }`}
+                >
+                  2. 저장소 스캔
+                </div>
+                <div
+                  className={`rounded-lg py-1.5 px-2 border transition ${
+                    elapsedMs >= 1800
+                      ? "border-indigo-200 dark:border-indigo-800 bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 font-semibold"
+                      : "border-slate-100 dark:border-slate-800 text-slate-400"
+                  }`}
+                >
+                  3. 과제 자동 분류
+                </div>
+              </div>
+            </div>
           </div>
-        ) : filteredCategories.length === 0 ? (
+        )}
+        {!loading && filteredCategories.length === 0 ? (
           <div className="p-10 text-center text-xs text-slate-400">
             검색 결과와 일치하는 저장소가 없습니다.
           </div>
@@ -221,6 +322,7 @@ export function OrgRepoBrowser() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <button
                     onClick={() => toggleCategory(cat.category)}
+                    aria-expanded={isExpanded}
                     className="flex items-center gap-2.5 text-left font-semibold text-slate-800 dark:text-slate-200 hover:text-indigo-600 transition"
                   >
                     {isExpanded ? (

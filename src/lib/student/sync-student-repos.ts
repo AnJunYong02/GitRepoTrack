@@ -1,5 +1,9 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getInstallationOctokit, normalizeOrgName } from "@/lib/github/app";
+import {
+  getDefaultOrgName,
+  getInstallationOctokit,
+  normalizeOrgName,
+} from "@/lib/github/app";
 import { parseRepoName, ParsedRepoInfo } from "@/lib/github/repo-parser";
 
 /**
@@ -100,7 +104,7 @@ export async function syncReposForStudent(
   userId: string,
   githubId: number | undefined,
   studentNo: string,
-  options: { scanOrgRepos?: boolean } = { scanOrgRepos: true }
+  options: { scanOrgRepos?: boolean; orgName?: string } = { scanOrgRepos: true }
 ): Promise<{ linkedCount: number; syncedFromOrg: number }> {
   const cleanNo = studentNo.trim();
   if (!/^[0-9]{6,10}$/.test(cleanNo)) {
@@ -115,17 +119,21 @@ export async function syncReposForStudent(
 
   let linkedCount = 0;
   if (matchingDbRepos && matchingDbRepos.length > 0) {
-    const idsToUpdate = matchingDbRepos.map((r) => r.id);
-    const { error: updateErr } = await supabaseAdmin
-      .from("student_repos")
-      .update({
-        profile_id: userId,
-        student_no: cleanNo,
-      })
-      .in("id", idsToUpdate);
+    const idsToUpdate = matchingDbRepos
+      .filter((r) => !r.profile_id || r.profile_id === userId)
+      .map((r) => r.id);
+    if (idsToUpdate.length > 0) {
+      const { error: updateErr } = await supabaseAdmin
+        .from("student_repos")
+        .update({
+          profile_id: userId,
+          student_no: cleanNo,
+        })
+        .in("id", idsToUpdate);
 
-    if (!updateErr) {
-      linkedCount = idsToUpdate.length;
+      if (!updateErr) {
+        linkedCount = idsToUpdate.length;
+      }
     }
   }
 
@@ -134,7 +142,9 @@ export async function syncReposForStudent(
   // 2. Scan GitHub Organization for any repos belonging to this studentNo
   if (options.scanOrgRepos) {
     try {
-      const targetOrg = normalizeOrgName(process.env.GITHUB_ORG_NAME || "2026-2-WebService");
+      const targetOrg = normalizeOrgName(
+        options.orgName || getDefaultOrgName()
+      );
       const octokit = await getInstallationOctokit(targetOrg);
 
       let allRepos: any[] = [];
@@ -166,15 +176,17 @@ export async function syncReposForStudent(
       }
 
       if (studentOrgRepos.length > 0) {
-        // Fetch all existing assignments
+        // Fetch existing assignments scoped to targetOrg
         const { data: existingAssignments } = await supabaseAdmin
           .from("assignments")
           .select("id, title, branch, org_name");
 
-        const assignmentsList = [...(existingAssignments || [])];
+        const assignmentsList = (existingAssignments || []).filter(
+          (a) => (a.org_name || "").toLowerCase() === targetOrg.toLowerCase()
+        );
 
         for (const parsedRepo of studentOrgRepos) {
-          // Find or create assignment for this category
+          // Find or create assignment for this category in targetOrg
           let matchedAssignment = assignmentsList.find(
             (a) =>
               a.title.toLowerCase().includes(parsedRepo.category.toLowerCase()) ||
@@ -254,16 +266,18 @@ export async function syncReposForStudent(
               .maybeSingle();
 
             if (existingSr) {
-              await supabaseAdmin
-                .from("student_repos")
-                .update({
-                  profile_id: userId,
-                  student_no: cleanNo,
-                  full_name: parsedRepo.fullName,
-                  repo_id: parsedRepo.repoId,
-                })
-                .eq("id", existingSr.id);
-              syncedFromOrg++;
+              if (!existingSr.profile_id || existingSr.profile_id === userId) {
+                await supabaseAdmin
+                  .from("student_repos")
+                  .update({
+                    profile_id: userId,
+                    student_no: cleanNo,
+                    full_name: parsedRepo.fullName,
+                    repo_id: parsedRepo.repoId,
+                  })
+                  .eq("id", existingSr.id);
+                syncedFromOrg++;
+              }
             } else {
               const fallbackGithubId = !isNaN(Number(cleanNo))
                 ? Number(cleanNo)

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireStaff } from "@/lib/auth/guards";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { normalizeOrgName } from "@/lib/github/app";
+import { isValidOrgSlug } from "@/lib/org/active-org";
 
 export async function POST(req: Request) {
   try {
@@ -8,8 +10,12 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { title, orgName, branch = "main", deadlineAt, rankingMode = "live" } = body;
 
-    if (!title || !orgName || !deadlineAt) {
-      return NextResponse.json({ error: "필수 입력값이 누락되었습니다." }, { status: 400 });
+    const cleanOrg = normalizeOrgName(orgName);
+    if (!title || !cleanOrg || !deadlineAt || !isValidOrgSlug(cleanOrg)) {
+      return NextResponse.json(
+        { error: "필수 입력값이 누락되었거나 유효하지 않은 Organization 이름입니다." },
+        { status: 400 }
+      );
     }
 
     // 1. Insert assignment
@@ -17,7 +23,7 @@ export async function POST(req: Request) {
       .from("assignments")
       .insert({
         title,
-        org_name: orgName,
+        org_name: cleanOrg,
         branch,
         deadline_at: deadlineAt,
         ranking_mode: rankingMode,

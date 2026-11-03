@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireStaff } from "@/lib/auth/guards";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { normalizeOrgName } from "@/lib/github/app";
 import { ParsedRepoInfo } from "@/lib/github/repo-parser";
+import { resolveActiveOrg } from "@/lib/org/active-org";
 
 export async function POST(req: Request) {
   try {
@@ -12,6 +12,7 @@ export async function POST(req: Request) {
     const {
       category,
       title: inputTitle,
+      orgName: inputOrgName,
       branch = "main",
       deadlineAt,
       rankingMode = "live",
@@ -19,6 +20,7 @@ export async function POST(req: Request) {
     }: {
       category: string;
       title?: string;
+      orgName?: string;
       branch?: string;
       deadlineAt?: string;
       rankingMode?: "live" | "none";
@@ -29,7 +31,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "카테고리와 등록할 저장소 목록이 필요합니다." }, { status: 400 });
     }
 
-    const orgName = normalizeOrgName(process.env.GITHUB_ORG_NAME || "2026-2-WebService");
+    const orgName = await resolveActiveOrg(inputOrgName);
     const numMatch = category.match(/([0-9]+)/);
     const defaultTitle = numMatch
       ? `웹서비스 개발 ${parseInt(numMatch[1], 10)}차 과제 (${category})`
@@ -38,12 +40,12 @@ export async function POST(req: Request) {
     const finalDeadline =
       deadlineAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    // 1. Find or create assignment
+    // 1. Find or create assignment scoped to orgName
     let assignmentId: string;
     const { data: existingAssignment } = await supabaseAdmin
       .from("assignments")
       .select("id")
-      .eq("org_name", orgName)
+      .ilike("org_name", orgName)
       .eq("title", title)
       .maybeSingle();
 
