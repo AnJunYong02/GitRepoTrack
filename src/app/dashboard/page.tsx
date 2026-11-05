@@ -3,12 +3,14 @@ import { Navbar } from "@/components/navbar";
 import { requireUser } from "@/lib/auth/guards";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { resolveStudentNo, syncReposForStudent } from "@/lib/student/sync-student-repos";
+import { normalizeOrgName } from "@/lib/github/app";
 import { parseRepoName } from "@/lib/github/repo-parser";
 import {
   getAvailableOrganizations,
-  resolveActiveOrg,
+  isValidOrgSlug,
 } from "@/lib/org/active-org";
 import { OrganizationSwitcher } from "@/components/org-switcher";
+import { OrgSelectorView } from "@/components/org-selector-view";
 import { StudentNoBanner } from "@/components/student/student-no-banner";
 import { StudentRepoList, StudentRepoItemData } from "@/components/student/student-repo-list";
 import { ArrowRight, Shield } from "lucide-react";
@@ -63,11 +65,34 @@ export default async function DashboardPage({
   searchParams?: Promise<{ org?: string }>;
 }) {
   const sp = searchParams ? await searchParams : undefined;
-  const activeOrg = await resolveActiveOrg(sp?.org);
-  const [{ user, profile }, organizations] = await Promise.all([
-    requireUser(),
-    getAvailableOrganizations(activeOrg),
-  ]);
+  const rawOrgQuery = normalizeOrgName(sp?.org || "");
+  const hasExplicitOrg = isValidOrgSlug(rawOrgQuery);
+
+  const { user, profile } = await requireUser();
+  const organizations = await getAvailableOrganizations(
+    hasExplicitOrg ? rawOrgQuery : undefined,
+    { user, profile }
+  );
+
+  // Step 1: When entering /dashboard without ?org=..., show the Organization Selection Page first
+  if (!hasExplicitOrg) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+        <Navbar />
+        <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+          <OrgSelectorView
+            organizations={organizations}
+            githubLogin={profile?.github_login}
+          />
+        </main>
+      </div>
+    );
+  }
+
+  const activeOrg = rawOrgQuery;
+  const isOwnerOfActiveOrg = organizations.some(
+    (o) => o.name.toLowerCase() === activeOrg.toLowerCase() && o.isOwner
+  );
 
   // 1. Resolve student number (from metadata, linked repos, commit author, or GitHub profile)
   const studentNo = await resolveStudentNo(user, profile);
@@ -181,12 +206,6 @@ export default async function DashboardPage({
         : 1;
     const isReadmeSatisfied = hasSnapshot && Boolean(readmeResults?.satisfied);
 
-    // File checks
-    const fileResults: any[] = Array.isArray(latestEval?.file_results)
-      ? latestEval.file_results
-      : [];
-    const missingFilesCount = fileResults.filter((f) => !f.satisfied).length;
-
     // Deadline & Late check
     const deadline = assignment?.deadline_at ? new Date(assignment.deadline_at) : null;
     const commitsList: { committed_at: string }[] = Array.isArray(sr.commits)
@@ -205,12 +224,11 @@ export default async function DashboardPage({
     const isPastDeadlineUnpushed =
       Boolean(deadline) && !hasPushed && nowMs > deadline!.getTime();
 
-    // Overall submission satisfaction
+    // Overall submission satisfaction (commits + README keywords)
     const isSubmitted =
       hasPushed &&
       isCommitsSatisfied &&
-      isReadmeSatisfied &&
-      missingFilesCount === 0;
+      isReadmeSatisfied;
 
     // Build top-right badge summary
     const unmetReasons: string[] = [];
@@ -226,9 +244,6 @@ export default async function DashboardPage({
         } else {
           unmetReasons.push("README 누락");
         }
-      }
-      if (missingFilesCount > 0) {
-        unmetReasons.push(`필수파일 ${missingFilesCount}개 누락`);
       }
     }
 
@@ -259,17 +274,17 @@ export default async function DashboardPage({
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <Navbar />
+      <Navbar orgName={activeOrg} assignmentTitle="내 과제 목록" />
 
-      <main className="mx-auto max-w-5xl px-4 py-8 space-y-6">
-        {/* Staff Quick Banner */}
-        {profile?.role === "staff" && (
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* Staff Quick Banner (shown only if user is Owner of the selected Organization) */}
+        {isOwnerOfActiveOrg && (
           <div className="rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/60 dark:bg-blue-950/40 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 <span className="text-sm font-bold text-blue-900 dark:text-blue-200">
-                  관리자(Organization Owner) 권한으로 접속 중입니다
+                  {activeOrg} Organization의 Owner(관리자) 권한이 확인되었습니다
                 </span>
               </div>
               <p className="text-xs text-blue-700 dark:text-blue-300">
@@ -293,12 +308,12 @@ export default async function DashboardPage({
           </p>
         </div>
 
-        {/* Multi-Organization Switcher */}
+        {/* Multi-Organization Toggle Switcher */}
         <OrganizationSwitcher
           activeOrg={activeOrg}
           organizations={organizations}
           basePath="/dashboard"
-          role={profile?.role === "staff" ? "staff" : "student"}
+          role={isOwnerOfActiveOrg ? "staff" : "student"}
         />
 
         {/* Student Number Binding & Org Repo Sync Banner */}

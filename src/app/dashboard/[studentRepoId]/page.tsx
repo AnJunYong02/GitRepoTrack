@@ -9,7 +9,7 @@ export default async function StudentDashboardDetailPage({
   params: Promise<{ studentRepoId: string }>;
 }) {
   const { studentRepoId } = await params;
-  const { repo } = await requireStudentRepo(studentRepoId);
+  const { repo, isStaff } = await requireStudentRepo(studentRepoId);
 
   // Fetch status
   const { data: status } = await supabaseAdmin
@@ -34,7 +34,7 @@ export default async function StudentDashboardDetailPage({
   // Fetch commits
   const { data: commits } = await supabaseAdmin
     .from("commits")
-    .select("sha, committed_at")
+    .select("sha, committed_at, message")
     .eq("student_repo_id", studentRepoId)
     .order("committed_at", { ascending: true });
 
@@ -46,11 +46,18 @@ export default async function StudentDashboardDetailPage({
     commits: commits || [],
   };
 
+  const repoOrg =
+    repo.assignments?.org_name ||
+    (repo.full_name ? repo.full_name.split("/")[0] : "");
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <Navbar />
-      <main className="mx-auto max-w-4xl px-4 py-8">
-        <ClientDashboardView studentRepoId={studentRepoId} initialData={initialData} />
+      <Navbar
+        orgName={repoOrg}
+        assignmentTitle={repo.assignments?.title || repo.full_name}
+      />
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+        <ClientDashboardView studentRepoId={studentRepoId} isStaff={isStaff} initialData={initialData} />
       </main>
     </div>
   );

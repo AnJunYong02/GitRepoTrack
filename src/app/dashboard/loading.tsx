@@ -23,7 +23,7 @@ export default function DashboardLoading() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Top Navbar Placeholder */}
       <header className="sticky top-0 z-40 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2 font-bold text-base tracking-tight">
             <GitBranch className="w-5 h-5 text-blue-600" />
             <span>RepoTrack</span>
@@ -31,7 +31,7 @@ export default function DashboardLoading() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-10 space-y-6">
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 space-y-6">
         <div className="rounded-2xl border border-blue-200 dark:border-blue-900/60 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-sm">
           <div className="mx-auto max-w-md text-center space-y-4">
             <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 dark:bg-blue-950/80 px-4 py-1.5 text-xs font-bold text-blue-700 dark:text-blue-300 ring-1 ring-blue-500/20">

@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { RefreshCw, Play, Clock, CheckCircle2, XCircle, AlertCircle, GitBranch, ArrowLeft, ExternalLink } from "lucide-react";
+import { RefreshCw, Play, Clock, AlertCircle, GitBranch, ArrowLeft, ExternalLink, Trophy } from "lucide-react";
 import { ReadmeChecklist } from "@/components/student/readme-checklist";
 import { CommitChart } from "@/components/student/commit-chart";
+import { CommitTimeline } from "@/components/student/commit-timeline";
+import { DeadlineCountdown } from "@/components/student/deadline-countdown";
 
 interface ClientDashboardViewProps {
   studentRepoId: string;
+  isStaff?: boolean;
   initialData: {
     repo: any;
     assignment: any;
@@ -17,7 +20,7 @@ interface ClientDashboardViewProps {
   };
 }
 
-export function ClientDashboardView({ studentRepoId, initialData }: ClientDashboardViewProps) {
+export function ClientDashboardView({ studentRepoId, isStaff = false, initialData }: ClientDashboardViewProps) {
   const [data, setData] = useState(initialData);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: "error" | "success" } | null>(null);
@@ -49,19 +52,37 @@ export function ClientDashboardView({ studentRepoId, initialData }: ClientDashbo
 
   const evalData = data.evaluation;
   const isSubmitted = evalData?.submitted ?? false;
-  const fileResults = evalData?.file_results || [];
   const readmeResults = evalData?.readme_results || { satisfied: false, missingKeywords: [], details: [] };
+  const repoOrg =
+    data.assignment?.org_name ||
+    (data.repo?.full_name ? data.repo.full_name.split("/")[0] : "");
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <Link
-          href="/dashboard"
+          href={
+            isStaff && data.assignment?.id
+              ? `/admin/assignments/${data.assignment.id}`
+              : repoOrg
+              ? `/dashboard?org=${encodeURIComponent(repoOrg)}`
+              : "/dashboard"
+          }
           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>뒤로가기 (내 과제 목록)</span>
+          <span>{isStaff ? "뒤로가기 (과제 관리 화면)" : "뒤로가기 (내 과제 목록)"}</span>
         </Link>
+
+        {data.assignment?.id && data.assignment?.ranking_mode !== "none" && (
+          <Link
+            href={`/assignments/${data.assignment.id}/leaderboard`}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/40 px-3.5 py-2 text-xs font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-100 transition"
+          >
+            <Trophy className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            <span>실시간 순위표 보기</span>
+          </Link>
+        )}
       </div>
 
       {/* Top Header Card */}
@@ -137,47 +158,29 @@ export function ClientDashboardView({ studentRepoId, initialData }: ClientDashbo
             </span>
           )}
         </div>
+
+        <DeadlineCountdown
+          deadlineAt={data.assignment?.deadline_at ?? null}
+          commitDates={(data.commits || []).map((c: any) => c.committed_at)}
+          isSubmitted={isSubmitted}
+        />
       </div>
 
-      {/* Required Files Checklist */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-3">
-        <h3 className="font-semibold text-sm">필수 파일 및 코드 조건</h3>
-        {fileResults.length === 0 ? (
-          <p className="text-xs text-slate-500">별도의 필수 파일 조건이 없습니다.</p>
-        ) : (
-          <div className="space-y-2">
-            {fileResults.map((fr: any, idx: number) => (
-              <div
-                key={idx}
-                className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 text-xs"
-              >
-                <span className="font-medium">{fr.label || fr.description || "src 디렉토리 내 소스 코드 존재"}</span>
-                {fr.satisfied ? (
-                  <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>발견됨 ({fr.matchedPath})</span>
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-red-600 font-semibold">
-                    <XCircle className="w-3.5 h-3.5" />
-                    <span>누락됨</span>
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+      {/* Main Content Grid: Left/Center = README Checklist (Passed vs Failed 2-column), Right = Daily Commit Trend */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="lg:col-span-8 min-w-0">
+          <ReadmeChecklist
+            satisfied={readmeResults.satisfied}
+            missingKeywords={readmeResults.missingKeywords}
+            details={readmeResults.details}
+          />
+        </div>
+
+        <div className="lg:col-span-4 lg:sticky lg:top-20 min-w-0 space-y-6">
+          <CommitChart commits={data.commits} />
+          <CommitTimeline commits={data.commits} />
+        </div>
       </div>
-
-      {/* README Header Keywords Checklist */}
-      <ReadmeChecklist
-        satisfied={readmeResults.satisfied}
-        missingKeywords={readmeResults.missingKeywords}
-        details={readmeResults.details}
-      />
-
-      {/* Commit History Chart */}
-      <CommitChart commits={data.commits} />
     </div>
   );
 }

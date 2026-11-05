@@ -37,16 +37,10 @@ export async function POST(req: Request) {
       throw aErr || new Error("과제 생성 실패");
     }
 
-    // 2. Create initial criteria version with default Weekly Report 5 keywords
+    // 2. Create initial criteria version
     const defaultRules = {
       branch,
-      requiredFiles: [
-        {
-          type: "glob_exists",
-          pattern: "src/**/*",
-          label: "src/ 아래 소스 파일 존재",
-        },
-      ],
+      requiredFiles: [],
       readme: {
         required: true,
         headerKeywords: [],

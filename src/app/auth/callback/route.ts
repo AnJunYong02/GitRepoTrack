@@ -1,12 +1,18 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { checkIsOrgOwner, checkIsOrgOwnerWithUserToken } from "@/lib/github/app";
+import {
+  checkIsOrgOwner,
+  checkIsOrgOwnerWithUserToken,
+  listUserOrgMembershipsWithToken,
+  UserOrgMembership,
+} from "@/lib/github/app";
+import { ACTIVE_ORG_COOKIE } from "@/lib/org/active-org";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
-  // Default redirect destination changed to /dashboard
+  // Default redirect destination is /dashboard (Organization Selection Page)
   const next = requestUrl.searchParams.get("next") ?? "/dashboard";
 
   if (code) {
@@ -26,15 +32,26 @@ export async function GET(request: Request) {
       const providerToken = data.session?.provider_token;
 
       if (githubId && githubLogin) {
-        // Automatically check if user is an Owner (admin) of the target GitHub organization
         let role: "student" | "staff" = "student";
+        let userOrgs: UserOrgMembership[] = [];
+
         try {
-          // 1. Check with user's own OAuth provider token (supports Private membership & zero GitHub App setup required)
+          // 1. Fetch all organizations connected to the user's GitHub account using OAuth provider token
           if (providerToken) {
-            const isOwnerWithToken = await checkIsOrgOwnerWithUserToken(providerToken);
-            if (isOwnerWithToken) {
+            userOrgs = await listUserOrgMembershipsWithToken(providerToken);
+            if (userOrgs.some((o) => o.role === "admin")) {
               role = "staff";
-              console.log(`[Auth Callback] User ${githubLogin} recognized as STAFF via OAuth provider token.`);
+              console.log(
+                `[Auth Callback] User ${githubLogin} recognized as STAFF (Owner of: ${userOrgs
+                  .filter((o) => o.role === "admin")
+                  .map((o) => o.login)
+                  .join(", ")}).`
+              );
+            } else {
+              const isOwnerWithToken = await checkIsOrgOwnerWithUserToken(providerToken);
+              if (isOwnerWithToken) {
+                role = "staff";
+              }
             }
           }
 
@@ -47,8 +64,14 @@ export async function GET(request: Request) {
             }
           }
 
-          if (role === "student") {
-            console.log(`[Auth Callback] User ${githubLogin} assigned role STUDENT.`);
+          // Save user's connected GitHub organizations into user_metadata for instant toggle switching
+          if (userOrgs.length > 0) {
+            await supabaseAdmin.auth.admin.updateUserById(user.id, {
+              user_metadata: {
+                ...(user.user_metadata || {}),
+                github_orgs: userOrgs,
+              },
+            });
           }
         } catch (err) {
           console.warn("[Auth Callback] Could not check org owner status, defaulting to student:", err);
@@ -95,9 +118,10 @@ export async function GET(request: Request) {
           console.error("Failed to link student repo with roster:", e);
         }
 
-        // If user is staff and default redirect was /dashboard, navigate directly to /admin
-        const finalRedirect = role === "staff" && next === "/dashboard" ? "/admin" : next;
-        return NextResponse.redirect(`${requestUrl.origin}${finalRedirect}`);
+        // Always start at /dashboard (Organization Selection screen) unless explicit next was given
+        const response = NextResponse.redirect(`${requestUrl.origin}${next}`);
+        response.cookies.delete(ACTIVE_ORG_COOKIE);
+        return response;
       }
     }
   }

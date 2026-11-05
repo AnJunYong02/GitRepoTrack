@@ -74,14 +74,7 @@ export async function POST(req: Request) {
 
       const defaultRules = {
         branch,
-        requiredFiles: [
-          {
-            type: "glob_exists",
-            pattern: "src/**/*",
-            label: "src 디렉토리 내 소스 코드 존재",
-            description: "src 디렉토리 내 소스 코드 존재",
-          },
-        ],
+        requiredFiles: [],
         readmeKeywords: [],
         readme: {
           required: true,

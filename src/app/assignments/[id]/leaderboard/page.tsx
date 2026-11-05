@@ -168,12 +168,29 @@ export default async function LeaderboardPage({
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <Navbar />
+      <Navbar
+        orgName={assignment.org_name}
+        assignmentTitle={assignment.title}
+        assignmentHref={
+          isStaff
+            ? `/admin/assignments/${assignment.id}`
+            : assignment.org_name
+            ? `/dashboard?org=${encodeURIComponent(assignment.org_name)}`
+            : "/dashboard"
+        }
+        subPageLabel="실시간 순위표"
+      />
 
-      <main className="mx-auto max-w-4xl px-4 py-8 space-y-6">
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         <div>
           <Link
-            href={isStaff ? `/admin/assignments/${assignment.id}` : "/dashboard"}
+            href={
+              isStaff
+                ? `/admin/assignments/${assignment.id}`
+                : assignment.org_name
+                ? `/dashboard?org=${encodeURIComponent(assignment.org_name)}`
+                : "/dashboard"
+            }
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition"
           >
             <ArrowLeft className="w-4 h-4" />
