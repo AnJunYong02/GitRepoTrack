@@ -102,4 +102,29 @@ describe("종합 스냅샷 판정기 (evaluateSnapshot)", () => {
     expect(resultPass.commitsSatisfied).toBe(true);
     expect(resultPass.submitted).toBe(true);
   });
+
+  it("requiredFiles가 비어있을 경우 파일 검사는 항상 충족(filesSatisfied: true)", () => {
+    const noFileRules: CriteriaRules = {
+      branch: "main",
+      requiredFiles: [],
+      readme: {
+        required: true,
+        headerKeywords: ["Key Learning"],
+      },
+    };
+
+    const result = evaluateSnapshot(
+      {
+        treePaths: [],
+        readmeContent: "## Key Learning\nContent",
+      },
+      noFileRules
+    );
+
+    expect(result.filesSatisfied).toBe(true);
+    expect(result.fileResults.length).toBe(0);
+    expect(result.readmeSatisfied).toBe(true);
+    expect(result.submitted).toBe(true);
+  });
 });
+

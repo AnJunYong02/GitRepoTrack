@@ -1,6 +1,8 @@
 "use client";
 
-import { CheckCircle2, XCircle, AlertCircle, Info } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CheckCircle2, XCircle, AlertCircle, Info, ClipboardCopy, Check } from "lucide-react";
+import { buildMarkdownHeadings } from "@/lib/student/time-utils";
 
 interface ReadmeChecklistProps {
   satisfied: boolean;
@@ -8,17 +10,61 @@ interface ReadmeChecklistProps {
   details: { keyword: string; found: boolean }[];
 }
 
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // fall through to legacy fallback
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 export function ReadmeChecklist({
   satisfied,
   missingKeywords,
   details,
 }: ReadmeChecklistProps) {
-  const totalCount = details?.length || 0;
-  const passedCount = details?.filter((d) => d.found).length || 0;
+  // "all" = 일괄 복사 완료, 그 외 문자열 = 해당 키워드 개별 복사 완료, "error" = 실패
+  const [copied, setCopied] = useState<string | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const handleCopy = async (key: string, keywords: string[]) => {
+    const ok = await copyToClipboard(buildMarkdownHeadings(keywords));
+    setCopied(ok ? key : "error");
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setCopied(null), 2000);
+  };
+
+  const safeDetails = Array.isArray(details) ? details : [];
+  const totalCount = safeDetails.length;
+  const passedItems = safeDetails.filter((d) => d.found);
+  const failedItems = safeDetails.filter((d) => !d.found);
+  const passedCount = passedItems.length;
 
   return (
-    <div className="space-y-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm">
-      <div className="flex items-center justify-between gap-2">
+    <div className="space-y-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-semibold text-sm">README 필수 대제목 키워드 검사 결과</h3>
         {totalCount > 0 && (
           <span
@@ -62,30 +108,112 @@ export function ReadmeChecklist({
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-            {details.map((item) => (
-              <div
-                key={item.keyword}
-                className={`flex items-center justify-between p-2.5 rounded-lg border text-xs ${
-                  item.found
-                    ? "border-emerald-200 bg-emerald-50/40 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-200"
-                    : "border-red-200 bg-red-50/40 text-red-900 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-200"
-                }`}
-              >
-                <span className="font-medium">{item.keyword}</span>
-                {item.found ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>통과</span>
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-600 dark:text-red-400">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    <span>미감지 (부족)</span>
-                  </span>
-                )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+            {/* Left Column: Passed Items */}
+            <div className="rounded-xl border border-emerald-200/80 dark:border-emerald-900/50 bg-emerald-50/20 dark:bg-emerald-950/10 p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between border-b border-emerald-200/60 dark:border-emerald-900/40 pb-2">
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span>통과 항목</span>
+                </span>
+                <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-200">
+                  {passedItems.length}개
+                </span>
               </div>
-            ))}
+
+              {passedItems.length === 0 ? (
+                <div className="py-6 text-center text-xs text-slate-400">
+                  아직 통과한 키워드가 없습니다.
+                </div>
+              ) : (
+                <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
+                  {passedItems.map((item, idx) => (
+                    <div
+                      key={`${item.keyword}-${idx}`}
+                      className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-emerald-200 bg-white/90 text-emerald-900 dark:border-emerald-900/50 dark:bg-slate-900/80 dark:text-emerald-200 text-xs shadow-2xs"
+                    >
+                      <span className="font-medium break-all">{item.keyword}</span>
+                      <span className="inline-flex items-center gap-1 shrink-0 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>통과</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Right Column: Failed / Unpassed Items */}
+            <div className="rounded-xl border border-red-200/80 dark:border-red-900/50 bg-red-50/20 dark:bg-red-950/10 p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between border-b border-red-200/60 dark:border-red-900/40 pb-2">
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-red-700 dark:text-red-300">
+                  <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
+                  <span>불통과 항목 (미감지)</span>
+                </span>
+                <span className="rounded-full bg-red-100 dark:bg-red-900/60 px-2 py-0.5 text-[11px] font-bold text-red-800 dark:text-red-200">
+                  {failedItems.length}개
+                </span>
+              </div>
+
+              {failedItems.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => handleCopy("all", failedItems.map((i) => i.keyword))}
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-red-300 dark:border-red-800 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-semibold text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
+                >
+                  {copied === "all" ? (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>복사 완료! README에 붙여넣으세요</span>
+                    </>
+                  ) : copied === "error" ? (
+                    <span>복사에 실패했습니다. 브라우저 권한을 확인해주세요</span>
+                  ) : (
+                    <>
+                      <ClipboardCopy className="w-3.5 h-3.5" />
+                      <span>미감지 키워드 마크다운 일괄 복사 ({failedItems.length}개)</span>
+                    </>
+                  )}
+                </button>
+              )}
+
+              {failedItems.length === 0 ? (
+                <div className="py-6 text-center text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                  🎉 모든 필수 키워드를 통과했습니다!
+                </div>
+              ) : (
+                <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
+                  {failedItems.map((item, idx) => {
+                    const itemKey = `kw:${item.keyword}-${idx}`;
+                    const isCopied = copied === itemKey;
+                    return (
+                      <button
+                        type="button"
+                        key={`${item.keyword}-${idx}`}
+                        title={`클릭하면 "## ${item.keyword}" 양식이 복사됩니다`}
+                        onClick={() => handleCopy(itemKey, [item.keyword])}
+                        className="group w-full flex items-center justify-between gap-2 p-2.5 rounded-lg border border-red-200 bg-white/90 text-left text-red-900 dark:border-red-900/50 dark:bg-slate-900/80 dark:text-red-200 text-xs shadow-2xs hover:border-red-400 hover:bg-red-50/70 dark:hover:bg-red-950/30 transition cursor-pointer"
+                      >
+                        <span className="font-medium break-all">{item.keyword}</span>
+                        {isCopied ? (
+                          <span className="inline-flex items-center gap-1 shrink-0 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                            <Check className="w-3.5 h-3.5" />
+                            <span>복사됨!</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 shrink-0 text-[11px] font-semibold text-red-600 dark:text-red-400">
+                            <AlertCircle className="w-3.5 h-3.5 group-hover:hidden" />
+                            <ClipboardCopy className="w-3.5 h-3.5 hidden group-hover:inline" />
+                            <span className="group-hover:hidden">미감지 (부족)</span>
+                            <span className="hidden group-hover:inline">## 복사</span>
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
           {!satisfied && missingKeywords.length > 0 && (

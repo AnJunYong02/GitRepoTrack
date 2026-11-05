@@ -1,14 +1,18 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { Navbar } from "@/components/navbar";
 import { getCurrentUser } from "@/lib/auth/guards";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { normalizeOrgName } from "@/lib/github/app";
 import { normalizeCategoryKey } from "@/lib/github/repo-parser";
 import {
+  ACTIVE_ORG_COOKIE,
+  checkIsUserOwnerOfOrg,
   getAvailableOrganizations,
-  resolveActiveOrg,
+  isValidOrgSlug,
 } from "@/lib/org/active-org";
 import { OrganizationSwitcher } from "@/components/org-switcher";
-import { OrgRepoBrowser } from "@/components/admin/org-repo-browser";
 import {
   AdminAssignmentList,
   AdminAssignmentItemData,
@@ -20,12 +24,7 @@ export default async function AdminAssignmentsPage({
 }: {
   searchParams?: Promise<{ org?: string }>;
 }) {
-  const sp = searchParams ? await searchParams : undefined;
-  const activeOrg = await resolveActiveOrg(sp?.org);
-  const [current, organizations] = await Promise.all([
-    getCurrentUser(),
-    getAvailableOrganizations(activeOrg),
-  ]);
+  const current = await getCurrentUser();
 
   if (!current) {
     return (
@@ -48,21 +47,56 @@ export default async function AdminAssignmentsPage({
     );
   }
 
-  // If not staff, show clean guidance card instead of crashing
-  if (current.profile?.role !== "staff") {
+  const sp = searchParams ? await searchParams : undefined;
+  const queryOrg = normalizeOrgName(sp?.org || "");
+  const cookieStore = await cookies();
+  const cookieOrg = normalizeOrgName(
+    cookieStore.get(ACTIVE_ORG_COOKIE)?.value || ""
+  );
+  const selectedOrg = isValidOrgSlug(queryOrg)
+    ? queryOrg
+    : isValidOrgSlug(cookieOrg)
+    ? cookieOrg
+    : "";
+
+  // If no organization has been selected yet, redirect to /dashboard (Organization Selection Page)
+  if (!selectedOrg) {
+    redirect("/dashboard");
+  }
+
+  const activeOrg = selectedOrg;
+  const [organizations, isOwnerOfActiveOrg] = await Promise.all([
+    getAvailableOrganizations(activeOrg, {
+      user: current.user,
+      profile: current.profile,
+    }),
+    checkIsUserOwnerOfOrg(activeOrg, current.user, current.profile),
+  ]);
+
+  // If the user is NOT an Owner of the selected Organization, show guidance card
+  if (!isOwnerOfActiveOrg) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-        <Navbar />
+        <Navbar orgName={activeOrg} assignmentTitle="권한 확인" />
         <main className="mx-auto max-w-xl px-4 py-16 space-y-6">
+          <OrganizationSwitcher
+            activeOrg={activeOrg}
+            organizations={organizations}
+            basePath="/admin"
+            role="student"
+          />
+
           <div className="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-white dark:bg-slate-900 p-8 shadow-sm space-y-5 text-center">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600">
               <ShieldAlert className="w-8 h-8" />
             </div>
 
             <div className="space-y-1">
-              <h1 className="text-xl font-bold">관리자(Staff) 권한이 필요합니다</h1>
+              <h1 className="text-xl font-bold">
+                {activeOrg} Organization의 Owner 권한이 필요합니다
+              </h1>
               <p className="text-xs text-slate-500">
-                이 페이지는 GitHub Organization의 Owner(교수 및 TA) 전용 공간입니다.
+                이 페이지는 선택한 GitHub Organization({activeOrg})의 Owner(교수 및 TA) 전용 관리 공간입니다.
               </p>
             </div>
 
@@ -72,32 +106,32 @@ export default async function AdminAssignmentsPage({
                 <span className="font-semibold text-slate-800 dark:text-slate-200">@{current.profile?.github_login}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">현재 부여된 역할:</span>
-                <span className="font-semibold text-amber-600">학생 (student)</span>
+                <span className="text-slate-500">선택된 Organization:</span>
+                <span className="font-semibold text-indigo-600 dark:text-indigo-400">{activeOrg}</span>
               </div>
-            </div>
-
-            <div className="rounded-xl bg-blue-50 dark:bg-blue-950/40 p-4 text-xs text-left space-y-2 border border-blue-100 dark:border-blue-900/40 text-blue-900 dark:text-blue-300">
-              <p className="font-semibold">💡 Organization Owner인데도 이 화면이 보인다면?</p>
-              <ol className="list-decimal list-inside space-y-1 text-[11px] text-blue-800 dark:text-blue-400">
-                <li>GitHub App 설정(Settings &gt; Developer settings &gt; GitHub Apps)으로 이동합니다.</li>
-                <li>좌측 <strong>General</strong> 탭 맨 아래 <strong>&quot;Where can this GitHub App be installed?&quot;</strong>를 <strong>&quot;Any account&quot;</strong>로 변경하고 저장합니다.</li>
-                <li>좌측 <strong>Install App</strong> 탭에서 <strong>조직 옆의 [Install]</strong> 버튼을 눌러 조직에 앱을 설치합니다.</li>
-                <li>앱 설치 완료 후 아래 버튼을 눌러 다시 로그인하시면 즉시 관리자 권한이 부여됩니다.</li>
-              </ol>
+              <div className="flex justify-between">
+                <span className="text-slate-500">해당 조직 내 역할:</span>
+                <span className="font-semibold text-amber-600">학생 / 일반 멤버 (student)</span>
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <Link
+                href={`/dashboard?org=${encodeURIComponent(activeOrg)}`}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>{activeOrg} 학생 과제 목록으로 이동</span>
+              </Link>
+              <Link
                 href="/dashboard"
                 className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50"
               >
-                <ArrowLeft className="w-4 h-4" />
-                <span>내 과제 대시보드로 이동</span>
+                <span>다른 Organization 선택하기</span>
               </Link>
               <Link
                 href="/login"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50"
               >
                 <RefreshCw className="w-4 h-4" />
                 <span>권한 재확인 (다시 로그인)</span>
@@ -172,9 +206,9 @@ export default async function AdminAssignmentsPage({
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <Navbar />
+      <Navbar orgName={activeOrg} assignmentTitle="과제 목록" />
 
-      <main className="mx-auto max-w-5xl px-4 py-8 space-y-6">
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 px-3 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300">
@@ -204,11 +238,8 @@ export default async function AdminAssignmentsPage({
           role="staff"
         />
 
-        {/* 1. Organization Repos Browser & Categorizer */}
-        <OrgRepoBrowser activeOrg={activeOrg} />
-
-        {/* 2. Registered Assignments List with Google Drive Style Layout Toggle */}
-        <AdminAssignmentList items={assignmentItems} />
+        {/* Unified Repo Search Bar & Assignments List */}
+        <AdminAssignmentList items={assignmentItems} activeOrg={activeOrg} />
       </main>
     </div>
   );

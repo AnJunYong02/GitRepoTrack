@@ -94,14 +94,17 @@ export async function runRepoAnalysis(
   // 4. Fetch live data from GitHub
   const fetched = await fetchRepoSnapshot(owner, repo, branch);
 
-  // 5. Evaluate
+  // 5. Evaluate (without requiredFiles check)
   const evalResult = evaluateSnapshot(
     {
       treePaths: fetched.treePaths,
       readmeContent: fetched.readmeContent,
       commitCount: fetched.commitCount,
     },
-    rules
+    {
+      ...rules,
+      requiredFiles: [],
+    }
   );
 
   // 6. Save snapshot

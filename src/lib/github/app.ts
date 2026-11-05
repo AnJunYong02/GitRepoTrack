@@ -10,6 +10,14 @@ export interface InstalledOrgInfo {
   accountType?: string;
 }
 
+export interface UserOrgMembership {
+  login: string;
+  avatarUrl?: string;
+  htmlUrl: string;
+  description?: string;
+  role: "admin" | "member";
+}
+
 /**
  * Normalizes an organization name/URL into a plain slug.
  * e.g., "https://github.com/2026-2-WebService" -> "2026-2-WebService"
@@ -211,35 +219,182 @@ export async function checkIsOrgOwnerWithUserToken(
   }
 }
 
+const userOrgRoleCache = new Map<
+  string,
+  { role: "admin" | "member" | null; expiresAt: number }
+>();
+const USER_ORG_ROLE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+const userPublicOrgsCache = new Map<
+  string,
+  { data: UserOrgMembership[]; expiresAt: number }
+>();
+
 /**
- * Checks if a GitHub user is an Owner (admin) of the target Organization.
- * Uses GitHub App Installation Token with 'Members: Read-only' permission.
+ * Lists public GitHub Organizations for a given username (cached for 5 minutes).
+ * Helpful when OAuth token is no longer in session or user joined a new public org.
  */
-export async function checkIsOrgOwner(username: string, orgName?: string): Promise<boolean> {
+export async function listPublicOrgsForUser(
+  username: string,
+  forceRefresh = false
+): Promise<UserOrgMembership[]> {
+  const cleanUser = username?.trim();
+  if (!cleanUser) return [];
+
+  const cacheKey = cleanUser.toLowerCase();
+  const cached = userPublicOrgsCache.get(cacheKey);
+  if (!forceRefresh && cached && Date.now() < cached.expiresAt) {
+    return cached.data;
+  }
+
+  try {
+    const octokit = new Octokit();
+    const { data: orgs } = await octokit.rest.orgs.listForUser({
+      username: cleanUser,
+      per_page: 100,
+    });
+
+    const result: UserOrgMembership[] = orgs
+      .filter((o) => Boolean(o.login))
+      .map((o) => ({
+        login: o.login,
+        avatarUrl: o.avatar_url,
+        htmlUrl: `https://github.com/${o.login}`,
+        description: o.description || undefined,
+        role: "member" as const,
+      }));
+
+    userPublicOrgsCache.set(cacheKey, {
+      data: result,
+      expiresAt: Date.now() + USER_ORG_ROLE_TTL_MS,
+    });
+    return result;
+  } catch (err: any) {
+    console.warn("[listPublicOrgsForUser] Could not list public orgs:", err.message);
+    return cached?.data || [];
+  }
+}
+
+/**
+ * Fetches details of a specific GitHub Organization by slug so a user can search & connect a new Organization.
+ */
+export async function fetchGitHubOrgDetails(
+  orgSlug: string
+): Promise<{
+  login: string;
+  avatarUrl?: string;
+  htmlUrl: string;
+  description?: string;
+} | null> {
+  const cleanOrg = normalizeOrgName(orgSlug);
+  if (!cleanOrg) return null;
+
+  try {
+    const octokit = new Octokit();
+    const { data } = await octokit.rest.orgs.get({ org: cleanOrg });
+    return {
+      login: data.login || cleanOrg,
+      avatarUrl: data.avatar_url,
+      htmlUrl: data.html_url || `https://github.com/${data.login || cleanOrg}`,
+      description: data.description || undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Lists all GitHub Organizations where the authenticated user is an active member/admin
+ * using their GitHub OAuth provider token (`read:org` scope).
+ */
+export async function listUserOrgMembershipsWithToken(
+  userAccessToken: string
+): Promise<UserOrgMembership[]> {
+  if (!userAccessToken) return [];
+
+  try {
+    const octokit = new Octokit({ auth: userAccessToken });
+    const { data: memberships } =
+      await octokit.rest.orgs.listMembershipsForAuthenticatedUser({
+        state: "active",
+        per_page: 100,
+      });
+
+    const result: UserOrgMembership[] = [];
+    for (const m of memberships) {
+      const org = m.organization;
+      if (org?.login) {
+        result.push({
+          login: org.login,
+          avatarUrl: org.avatar_url,
+          htmlUrl: `https://github.com/${org.login}`,
+          description: org.description || undefined,
+          role: m.role === "admin" ? "admin" : "member",
+        });
+      }
+    }
+    return result;
+  } catch (err: any) {
+    console.warn(
+      "[listUserOrgMembershipsWithToken] Could not list user org memberships:",
+      err.message
+    );
+    return [];
+  }
+}
+
+/**
+ * Checks a GitHub user's role ("admin" | "member" | null) in a specific Organization
+ * using the GitHub App Installation Token (cached for 5 minutes).
+ */
+export async function checkUserOrgRole(
+  username: string,
+  orgName?: string
+): Promise<"admin" | "member" | null> {
   const targetOrg = normalizeOrgName(orgName || process.env.GITHUB_ORG_NAME);
-  if (!targetOrg) {
-    console.warn("[checkIsOrgOwner] GITHUB_ORG_NAME is not set.");
-    return false;
+  if (!targetOrg || !username) return null;
+
+  const cacheKey = `${username.toLowerCase()}:${targetOrg.toLowerCase()}`;
+  const cached = userOrgRoleCache.get(cacheKey);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.role;
   }
 
   try {
     const octokit = await getInstallationOctokit(targetOrg);
     const { data: membership } = await octokit.rest.orgs.getMembershipForUser({
       org: targetOrg,
-      username: username,
+      username,
     });
 
-    const isOwner = membership.state === "active" && membership.role === "admin";
-    console.log(
-      `[checkIsOrgOwner] User: ${username}, Org: ${targetOrg}, State: ${membership.state}, Role: ${membership.role} => Owner: ${isOwner}`
-    );
-    return isOwner;
+    const role =
+      membership.state === "active"
+        ? membership.role === "admin"
+          ? "admin"
+          : "member"
+        : null;
+
+    userOrgRoleCache.set(cacheKey, {
+      role,
+      expiresAt: Date.now() + USER_ORG_ROLE_TTL_MS,
+    });
+    return role;
   } catch (err: any) {
-    if (err.status === 404) {
-      console.log(`[checkIsOrgOwner] User ${username} is not an active member of ${targetOrg} (or app not installed).`);
-      return false;
+    if (err?.status === 404) {
+      userOrgRoleCache.set(cacheKey, {
+        role: null,
+        expiresAt: Date.now() + USER_ORG_ROLE_TTL_MS,
+      });
     }
-    console.error(`[checkIsOrgOwner] Error checking org membership for ${username} in ${targetOrg}:`, err.message);
-    return false;
+    return null;
   }
+}
+
+/**
+ * Checks if a GitHub user is an Owner (admin) of the target Organization.
+ * Uses GitHub App Installation Token with 'Members: Read-only' permission.
+ */
+export async function checkIsOrgOwner(username: string, orgName?: string): Promise<boolean> {
+  const role = await checkUserOrgRole(username, orgName);
+  return role === "admin";
 }

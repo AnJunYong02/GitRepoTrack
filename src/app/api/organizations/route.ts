@@ -3,18 +3,33 @@ import { requireUser } from "@/lib/auth/guards";
 import { getDefaultOrgName, normalizeOrgName } from "@/lib/github/app";
 import {
   ACTIVE_ORG_COOKIE,
+  checkIsUserOwnerOfOrg,
   getAvailableOrganizations,
   isValidOrgSlug,
   resolveActiveOrg,
+  saveConnectedOrgToUserMetadata,
 } from "@/lib/org/active-org";
 
 export async function GET(req: Request) {
   try {
-    await requireUser();
+    const { user, profile } = await requireUser();
     const url = new URL(req.url);
     const queryOrg = url.searchParams.get("org");
+    const searchQuery = url.searchParams.get("q") || "";
+    const forceRefresh = url.searchParams.get("refresh") === "1";
+
     const activeOrg = await resolveActiveOrg(queryOrg);
-    const organizations = await getAvailableOrganizations(activeOrg);
+    const organizations = await getAvailableOrganizations(
+      activeOrg,
+      {
+        user,
+        profile,
+      },
+      {
+        forceRefresh,
+        searchQuery,
+      }
+    );
 
     return NextResponse.json({
       activeOrg,
@@ -31,23 +46,33 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    await requireUser();
+    const { user, profile } = await requireUser();
     const body = await req.json();
     const normalized = normalizeOrgName(String(body.orgName || ""));
 
     if (!isValidOrgSlug(normalized)) {
       return NextResponse.json(
         {
-          error:
-            "유효한 GitHub Organization 이름 또는 URL(예: 2026-2-WebService)을 입력해주세요.",
+          error: "유효한 GitHub Organization 이름을 입력하거나 선택해주세요.",
         },
         { status: 400 }
       );
     }
 
+    const isOwner = await checkIsUserOwnerOfOrg(normalized, user, profile);
+
+    // Save/update this organization in the user's connected organizations metadata
+    await saveConnectedOrgToUserMetadata(user, normalized, isOwner);
+
+    const targetPath = isOwner
+      ? `/admin?org=${encodeURIComponent(normalized)}`
+      : `/dashboard?org=${encodeURIComponent(normalized)}`;
+
     const res = NextResponse.json({
       success: true,
       activeOrg: normalized,
+      isOwner,
+      targetPath,
     });
 
     res.cookies.set(ACTIVE_ORG_COOKIE, normalized, {

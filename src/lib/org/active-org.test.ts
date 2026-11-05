@@ -1,6 +1,27 @@
-import { describe, it, expect } from "vitest";
-import { normalizeOrgName } from "@/lib/github/app";
-import { isValidOrgSlug } from "./active-org";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { normalizeOrgName, checkUserOrgRole, getDefaultOrgName } from "@/lib/github/app";
+import { isValidOrgSlug, checkIsUserOwnerOfOrg } from "./active-org";
+
+vi.mock("@/lib/github/app", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/github/app")>();
+  return {
+    ...actual,
+    checkUserOrgRole: vi.fn(),
+  };
+});
+
+vi.mock("@/lib/supabase/admin", () => ({
+  supabaseAdmin: {
+    from: vi.fn().mockReturnValue({
+      update: vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+      }),
+      select: vi.fn().mockReturnValue({
+        data: [],
+      }),
+    }),
+  },
+}));
 
 describe("normalizeOrgName", () => {
   it("returns plain slug unchanged", () => {
@@ -53,5 +74,83 @@ describe("isValidOrgSlug", () => {
     expect(isValidOrgSlug("")).toBe(false);
     expect(isValidOrgSlug(null)).toBe(false);
     expect(isValidOrgSlug(undefined)).toBe(false);
+  });
+});
+
+describe("checkIsUserOwnerOfOrg", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns false if user is missing or org slug is invalid", async () => {
+    expect(await checkIsUserOwnerOfOrg("valid-org", null)).toBe(false);
+    expect(await checkIsUserOwnerOfOrg("valid-org", undefined)).toBe(false);
+    expect(await checkIsUserOwnerOfOrg("", { id: "u1" })).toBe(false);
+    expect(await checkIsUserOwnerOfOrg("invalid/slug", { id: "u1" })).toBe(false);
+  });
+
+  it("returns true when user.user_metadata.github_orgs indicates admin role", async () => {
+    const user = {
+      id: "user-123",
+      user_metadata: {
+        github_orgs: [
+          { login: "MyOrg", role: "admin" },
+          { login: "OtherOrg", role: "member" },
+        ],
+      },
+    };
+    const profile = { role: "staff" };
+
+    const isOwner = await checkIsUserOwnerOfOrg("MyOrg", user, profile);
+    expect(isOwner).toBe(true);
+  });
+
+  it("returns false when user.user_metadata.github_orgs only has member role", async () => {
+    const user = {
+      id: "user-123",
+      user_metadata: {
+        github_orgs: [
+          { login: "MyOrg", role: "member" },
+        ],
+      },
+    };
+
+    const isOwner = await checkIsUserOwnerOfOrg("MyOrg", user, { role: "student" });
+    expect(isOwner).toBe(false);
+  });
+
+  it("uses checkUserOrgRole fallback when org is not in metadata but login is available", async () => {
+    const user = {
+      id: "user-123",
+      user_metadata: {
+        user_name: "octocat",
+      },
+    };
+
+    const mockedCheck = vi.mocked(checkUserOrgRole);
+    mockedCheck.mockResolvedValueOnce("admin");
+
+    const isOwnerAdmin = await checkIsUserOwnerOfOrg("SomeInstalledOrg", user, { role: "student" });
+    expect(mockedCheck).toHaveBeenCalledWith("octocat", "SomeInstalledOrg");
+    expect(isOwnerAdmin).toBe(true);
+
+    mockedCheck.mockResolvedValueOnce("member");
+    const isOwnerMember = await checkIsUserOwnerOfOrg("SomeInstalledOrg", user, { role: "student" });
+    expect(isOwnerMember).toBe(false);
+  });
+
+  it("falls back to staff role for the default organization when no metadata exists", async () => {
+    const defaultOrg = getDefaultOrgName();
+    const user = {
+      id: "user-123",
+      user_metadata: {},
+    };
+    const profile = { role: "staff" };
+
+    const isOwner = await checkIsUserOwnerOfOrg(defaultOrg, user, profile);
+    expect(isOwner).toBe(true);
+
+    const isOtherOwner = await checkIsUserOwnerOfOrg("DifferentOrg", user, profile);
+    expect(isOtherOwner).toBe(false);
   });
 });
