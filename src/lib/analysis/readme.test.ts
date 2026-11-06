@@ -127,6 +127,42 @@ GPT-4 활용
     expect(result.missingKeywords).toHaveLength(0);
   });
 
+  it("원문자 숫자(①, ②...) 뒤에 키워드를 쓴 형태도 인식 (띄어쓰기 유무 무관)", () => {
+    const keywords = ["과제 소개", "Database 환경", "이번 과제 키워드", "핵심 내용 정리"];
+    const readme = `
+① 과제 소개
+내용
+
+②Database 환경
+내용
+
+**③ 이번 과제 키워드**
+내용
+
+- ④ 핵심 내용 정리
+`;
+    const result = checkReadmeKeywords(readme, keywords);
+    expect(result.satisfied).toBe(true);
+    expect(result.missingKeywords).toHaveLength(0);
+  });
+
+  it("괄호 번호·기호 마커((1), [2], ■, ❶)와 마크다운 헤더 내 원문자도 인식", () => {
+    const keywords = ["과제 소개", "실행 방법", "프로젝트 구조", "회고"];
+    const readme = `
+(1) 과제 소개
+[2] 실행 방법
+■ 프로젝트 구조
+## ❶ 회고
+`;
+    expect(checkReadmeKeywords(readme, keywords).satisfied).toBe(true);
+  });
+
+  it("원문자 뒤 키워드가 없으면 여전히 미감지 처리", () => {
+    const result = checkReadmeKeywords("① 과제 소개\n② 실행 방법", ["과제 소개", "회고"]);
+    expect(result.satisfied).toBe(false);
+    expect(result.missingKeywords).toEqual(["회고"]);
+  });
+
   it("빈 README나 빈 키워드 목록 처리", () => {
     expect(checkReadmeKeywords("", weeklyKeywords).satisfied).toBe(false);
     expect(checkReadmeKeywords("# Hello", []).satisfied).toBe(true);

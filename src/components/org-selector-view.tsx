@@ -139,13 +139,6 @@ export function OrgSelectorView({
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
               이동할 GitHub Organization을 선택해주세요
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-              내 GitHub 계정에 연결된 Organization 목록입니다. 새로운 Organization을 검색하여 쉽게 연결할 수 있으며,{" "}
-              <strong className="text-slate-700 dark:text-slate-200">
-                Owner(교수·TA)이면 관리자 대시보드
-              </strong>
-              로 자동 진입합니다.
-            </p>
           </div>
 
           {/* Quick Toggle Dropdown Selector */}
@@ -158,7 +151,7 @@ export function OrgSelectorView({
               className="inline-flex w-full sm:w-auto items-center justify-between gap-2.5 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-indigo-500 transition shadow-sm disabled:opacity-60"
             >
               <Building2 className="w-4 h-4" />
-              <span>내 Organization 토글 선택 ({organizations.length})</span>
+              <span>내 Organization 선택 ({organizations.length})</span>
               <ChevronDown
                 className={`w-4 h-4 transition-transform ${
                   toggleOpen ? "rotate-180" : ""
@@ -381,7 +374,7 @@ export function OrgSelectorView({
                 <span className="text-xs text-slate-500 dark:text-slate-400">
                   {org.isOwner
                     ? "클릭 시 관리자 과제 관리 대시보드가 열립니다"
-                    : "클릭 시 내 학번 과제 제출 현황 대시보드가 열립니다"}
+                    : "클릭 시 내 과제 제출 현황 대시보드가 열립니다"}
                 </span>
 
                 <button
