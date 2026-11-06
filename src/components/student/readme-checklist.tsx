@@ -65,7 +65,7 @@ export function ReadmeChecklist({
   return (
     <div className="space-y-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-semibold text-sm">README 필수 대제목 키워드 검사 결과</h3>
+        <h3 className="font-semibold text-sm">README 필수 키워드 검사 결과</h3>
         {totalCount > 0 && (
           <span
             className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
@@ -91,16 +91,6 @@ export function ReadmeChecklist({
         )}
       </div>
 
-      {/* Accuracy Notice Box */}
-      <div className="flex items-start gap-2 rounded-lg border border-blue-200/80 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/30 p-3 text-xs text-blue-800 dark:text-blue-200">
-        <Info className="w-4 h-4 shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
-        <div className="space-y-0.5 leading-relaxed">
-          <p className="font-semibold">README 키워드 자동 분석 안내</p>
-          <p className="text-[11px] text-blue-700/90 dark:text-blue-300/90">
-            키워드 검사는 마크다운 대제목(<code className="font-mono">#</code>, <code className="font-mono">##</code>) 및 목록 형식을 기준으로 자동 분석되므로, 작성 양식이나 특수문자·띄어쓰기 차이로 인해 실제로 작성하셨더라도 일부 키워드를 감지하지 못하거나 검사 결과가 정확하지 않을 수 있습니다.
-          </p>
-        </div>
-      </div>
 
       {totalCount === 0 ? (
         <div className="rounded-lg border border-slate-100 dark:border-slate-800 p-3 text-xs text-slate-500">
@@ -179,7 +169,7 @@ export function ReadmeChecklist({
 
               {failedItems.length === 0 ? (
                 <div className="py-6 text-center text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                  🎉 모든 필수 키워드를 통과했습니다!
+                  모든 필수 키워드를 통과
                 </div>
               ) : (
                 <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
@@ -227,6 +217,17 @@ export function ReadmeChecklist({
           )}
         </>
       )}
+        {/* Accuracy Notice Box */}
+        <div className="flex items-start gap-2 rounded-lg border border-blue-200/80 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/30 p-3 text-xs text-blue-800 dark:text-blue-200">
+            <Info className="w-4 h-4 shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
+            <div className="space-y-0.5 leading-relaxed">
+                <p className="font-semibold">README 키워드 분석 기준</p>
+                <p className="text-[11px] text-blue-700/90 dark:text-blue-300/90">
+                    키워드 검사는 마크다운 대제목(<code className="font-mono">#</code>, <code className="font-mono">##</code>) 및 목록 형식을 기준으로 자동 분석되므로,<br/>
+                    작성 양식이나 특수문자·띄어쓰기 차이로 인해 실제로 작성하셨더라도 일부 키워드를 감지하지 못하거나 검사 결과가 정확하지 않을 수 있습니다.
+                </p>
+            </div>
+        </div>
     </div>
   );
 }

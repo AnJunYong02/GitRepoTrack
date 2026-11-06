@@ -112,7 +112,6 @@ export default async function AdminAssignmentDetailPage({
       id,
       full_name,
       student_no,
-      student_name,
       github_id,
       profiles (
         github_login
@@ -286,8 +285,7 @@ export default async function AdminAssignmentDetailPage({
                   <thead className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-500 font-medium whitespace-nowrap">
                     <tr>
                       <th className="px-3 py-2.5">학번</th>
-                      <th className="px-3 py-2.5">이름</th>
-                      <th className="px-3 py-2.5">REpository</th>
+                      <th className="px-3 py-2.5">Repository</th>
                       <th className="px-3 py-2.5">제출 여부</th>
                       <th className="px-3 py-2.5">commit갯수</th>
                       <th className="px-3 py-2.5">README 충족 여부</th>
@@ -352,7 +350,6 @@ export default async function AdminAssignmentDetailPage({
                         return (
                           <tr key={sr.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 whitespace-nowrap">
                             <td className="px-3 py-2.5 font-medium">{sr.student_no || "-"}</td>
-                            <td className="px-3 py-2.5">{sr.student_name || "-"}</td>
                             <td className="px-3 py-2.5">
                               <a
                                 href={`https://github.com/${sr.full_name}`}
@@ -436,7 +433,7 @@ export default async function AdminAssignmentDetailPage({
                       })
                     ) : (
                       <tr>
-                        <td colSpan={8} className="p-8 text-center text-slate-400">
+                        <td colSpan={7} className="p-8 text-center text-slate-400">
                           매핑된 학생 repo가 아직 없습니다.
                         </td>
                       </tr>

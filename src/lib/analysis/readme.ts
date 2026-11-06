@@ -13,9 +13,18 @@ function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// 영문/숫자 리스트 마커: "- ", "* ", "+ ", "1. ", "2) "
+const ASCII_LIST_REGEX = /^([-*+]|\d+[.)])\s+(.*)/;
+
+// 원문자·유니코드 번호(①~⑳, ⑴~⒇, ⒈~⒛, ⓪~⓿, ❶~❿, ㉑~㉟, ㊱~㊿, ㉠~㉻, Ⅰ~Ⅻ 등),
+// 괄호 번호((1), [1]) 및 주요 글머리 기호(■, ▶, ●, ✅ 등). 마커 뒤 공백은 선택(①과제 소개).
+const SYMBOL_MARKER_REGEX =
+  /^(?:[•■□◆◇●○▶▷★☆✓✔✅📌💡🔹🔸]|[\u2460-\u24FF\u2776-\u2793\u3251-\u325F\u32B1-\u32BF\u3200-\u321E\u3260-\u327B\u2160-\u217F]+|\(\d+\)|\[\d+\])\s*(.+)$/u;
+
 /**
  * Extracts markdown heading lines (#, ##, ###), bold leading labels (**Keyword**:),
- * and list items with leading keywords (- Keyword, 1. Keyword, etc.)
+ * list items with leading keywords (- Keyword, 1. Keyword, etc.), and lines prefixed
+ * with circled numbers / bracketed numbers / bullet symbols (① Keyword, (1) Keyword, ■ Keyword)
  */
 export function extractHeadingLines(content: string): string[] {
   if (!content) return [];
@@ -33,18 +42,34 @@ export function extractHeadingLines(content: string): string[] {
       continue;
     }
 
-    // Matches bullet (- * +) or numbered (1. 2. 1) 2)) list items
-    const listMatch = trimmed.match(/^([-*+]|\d+[.)])\s+(.*)/);
-    if (listMatch && listMatch[2]) {
-      let listContent = listMatch[2].trim();
+    // Strip leading list / numbering markers (can be stacked, e.g. "- ① Keyword")
+    let rest = trimmed;
+    let hasMarker = false;
+    for (let i = 0; i < 3; i++) {
+      const asciiMatch = rest.match(ASCII_LIST_REGEX);
+      if (asciiMatch && asciiMatch[2]) {
+        rest = asciiMatch[2].trim();
+        hasMarker = true;
+        continue;
+      }
+      const symbolMatch = rest.match(SYMBOL_MARKER_REGEX);
+      if (symbolMatch && symbolMatch[1]) {
+        rest = symbolMatch[1].trim();
+        hasMarker = true;
+        continue;
+      }
+      break;
+    }
+
+    if (hasMarker && rest) {
       // Remove leading bold tags if present: **Keyword**: or **Keyword**
-      listContent = listContent.replace(/^(\*\*|__)(.*?)\1[:\s]*/, "$2 ");
-      headings.push(listContent.trim());
+      rest = rest.replace(/^(\*\*|__)(.*?)\1[:\s]*/, "$2 ");
+      headings.push(rest.trim());
       continue;
     }
 
-    // Matches leading bold labels: **Key Learning**: or __Key Learning__:
-    const boldLabelMatch = trimmed.match(/^(\*\*|__)(.*?)\1[:\s]/);
+    // Matches leading bold labels: **Key Learning**: or __Key Learning__: or a standalone **Keyword** line
+    const boldLabelMatch = trimmed.match(/^(\*\*|__)(.*?)\1(?:[:\s]|$)/);
     if (boldLabelMatch && boldLabelMatch[2]) {
       headings.push(boldLabelMatch[2].trim());
     }
