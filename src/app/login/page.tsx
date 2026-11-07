@@ -73,7 +73,8 @@ export default function LoginPage() {
             <span>학생 로그인 시 GitHub 승인 화면 안내</span>
           </div>
           <p className="text-[11px] leading-relaxed text-blue-800/90 dark:text-blue-300/90">
-            GitHub 로그인 시 나타나는 <strong>&quot;Authorize AnJunYong02&quot;</strong> (또는 <strong>RepoTrack by JunYong An</strong>) 버튼은 관리자 계정으로 로그인되는 것이 아니라, <strong>수업 관리자가 생성한 RepoTrack 앱에 본인의 GitHub 계정 연결을 허락(Authorize)</strong>하는 정상적인 절차입니다. 안심하고 초록색 승인 버튼을 눌러 진행해주세요.
+            GitHub 로그인 시 나타나는 <strong>&quot;Authorize AnJunYong02&quot;</strong> (또는 <strong>RepoTrack by JunYong An</strong>) 버튼은 관리자 계정으로 로그인되는 것이 아니라, <strong>수업 관리자가 생성한 RepoTrack 앱에 본인의 GitHub 계정 연결을 허락(Authorize)</strong>하는 정상적인 절차입니다.<br/>
+              안심하고 초록색 승인 버튼을 눌러 진행해주세요.
           </p>
         </div>
 
