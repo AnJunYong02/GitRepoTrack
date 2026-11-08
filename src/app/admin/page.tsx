@@ -17,7 +17,8 @@ import {
   AdminAssignmentList,
   AdminAssignmentItemData,
 } from "@/components/admin/admin-assignment-list";
-import { Plus, Shield, ShieldAlert, ArrowLeft, RefreshCw } from "lucide-react";
+import { Shield, ShieldAlert, ArrowLeft, RefreshCw } from "lucide-react";
+import { CreateStudentReposPanel } from "@/components/admin/create-student-repos-panel";
 
 export default async function AdminAssignmentsPage({
   searchParams,
@@ -221,13 +222,7 @@ export default async function AdminAssignmentsPage({
             </p>
           </div>
 
-          <Link
-            href={`/admin/assignments/new?org=${encodeURIComponent(activeOrg)}`}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500"
-          >
-            <Plus className="w-4 h-4" />
-            <span>새 과제 직접 등록</span>
-          </Link>
+          <CreateStudentReposPanel orgName={activeOrg} />
         </div>
 
         {/* Multi-Organization Switcher */}
