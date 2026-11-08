@@ -22,6 +22,39 @@ export interface OrganizationOption {
   assignmentCount: number;
   userRole: "admin" | "member";
   isOwner: boolean;
+  /** 사용자가 대시보드 입장 카드로 등록한 org인지 */
+  isRegistered: boolean;
+}
+
+/**
+ * 신뢰할 수 있는 GitHub 멤버십 목록 (app_metadata — 서비스 롤만 쓰기 가능).
+ * user_metadata는 사용자가 브라우저에서 직접 수정할 수 있으므로 권한 판단에 쓰지 않는다.
+ */
+export function getTrustedMembershipOrgs(user?: any): UserOrgMembership[] {
+  const orgs = user?.app_metadata?.github_orgs;
+  return Array.isArray(orgs) ? orgs : [];
+}
+
+/**
+ * 예전 방식으로 user_metadata에 저장된 org 이름 (표시용으로만 사용, role은 무시).
+ */
+export function getLegacyOrgNames(user?: any): string[] {
+  const orgs = user?.user_metadata?.github_orgs;
+  if (!Array.isArray(orgs)) return [];
+  return orgs
+    .map((o: any) => normalizeOrgName(String(o?.login || "")))
+    .filter((name: string) => isValidOrgSlug(name));
+}
+
+/**
+ * 사용자가 등록한 org 이름 목록. 아직 한 번도 저장하지 않았다면 null.
+ */
+export function getRegisteredOrgNames(user?: any): string[] | null {
+  const orgs = user?.app_metadata?.registered_orgs;
+  if (!Array.isArray(orgs)) return null;
+  return orgs
+    .map((o: unknown) => normalizeOrgName(String(o || "")))
+    .filter((name: string) => isValidOrgSlug(name));
 }
 
 /**
@@ -75,11 +108,8 @@ export async function checkIsUserOwnerOfOrg(
   const cleanOrg = normalizeOrgName(orgName);
   if (!isValidOrgSlug(cleanOrg) || !user) return false;
 
-  const metaOrgs: UserOrgMembership[] = Array.isArray(
-    user.user_metadata?.github_orgs
-  )
-    ? user.user_metadata.github_orgs
-    : [];
+  // app_metadata만 신뢰 (user_metadata의 role은 사용자가 위조 가능)
+  const metaOrgs = getTrustedMembershipOrgs(user);
 
   const matchedMeta = metaOrgs.find(
     (o) => normalizeOrgName(o.login).toLowerCase() === cleanOrg.toLowerCase()
@@ -176,6 +206,7 @@ export async function getAvailableOrganizations(
             : existing.assignmentCount,
         userRole: nextRole,
         isOwner: nextRole === "admin",
+        isRegistered: false,
       });
     } else {
       map.set(key, {
@@ -190,16 +221,18 @@ export async function getAvailableOrganizations(
         assignmentCount: partial?.assignmentCount ?? 0,
         userRole: nextRole,
         isOwner: nextRole === "admin",
+        isRegistered: false,
       });
     }
   };
 
-  // 1. User's connected GitHub Organizations from OAuth login metadata
-  const metaOrgs: UserOrgMembership[] = Array.isArray(
-    user?.user_metadata?.github_orgs
-  )
-    ? user.user_metadata.github_orgs
-    : [];
+  // 1. User's connected GitHub Organizations from OAuth login (trusted app_metadata)
+  const metaOrgs = getTrustedMembershipOrgs(user);
+
+  // 예전에 user_metadata에 저장된 org는 이름만 표시 (role은 아래 GitHub App 조회로 판단)
+  for (const legacyName of getLegacyOrgNames(user)) {
+    upsertOrg(legacyName);
+  }
 
   for (const m of metaOrgs) {
     upsertOrg(m.login, {
@@ -301,6 +334,23 @@ export async function getAvailableOrganizations(
     }
   }
 
+  // 7. 등록 여부 표시. registered_orgs를 한 번도 저장하지 않은 기존 사용자는
+  //    예전 화면과 같도록 모든 org를 등록된 것으로 간주한다(삭제 버튼으로 정리 가능).
+  const registered = getRegisteredOrgNames(user);
+  const registeredKeys = registered
+    ? new Set(registered.map((n) => n.toLowerCase()))
+    : null;
+  if (registered) {
+    // 등록했지만 다른 경로로 발견되지 않은 org도 카드로 보이도록 추가
+    for (const name of registered) upsertOrg(name);
+  }
+  for (const [key, org] of map) {
+    map.set(key, {
+      ...org,
+      isRegistered: registeredKeys ? registeredKeys.has(key) : true,
+    });
+  }
+
   // Sort: Owner orgs first, then installed orgs, then default org, then by assignmentCount desc
   return Array.from(map.values()).sort((a, b) => {
     if (a.isOwner !== b.isOwner) return a.isOwner ? -1 : 1;
@@ -314,48 +364,61 @@ export async function getAvailableOrganizations(
 }
 
 /**
- * Persists a newly connected/registered Organization into the user's `user_metadata.github_orgs`
- * so it permanently appears in their Organization selector and switcher dropdown.
+ * 사용자의 등록 org 목록(app_metadata.registered_orgs)에 org를 추가하거나 제거한다.
+ * - 아직 목록이 없던 기존 사용자는 seedNames(지금 화면에 카드로 보이던 org)로 먼저 채운다.
+ * - 제거할 때는 예전 방식(user_metadata.github_orgs)에 남은 항목도 함께 지워 다시 나타나지 않게 한다.
+ * 반환값: 변경 후 등록 목록
  */
-export async function saveConnectedOrgToUserMetadata(
-  user: any,
+export async function updateRegisteredOrgs(
+  userId: string,
   orgName: string,
-  isOwner: boolean
-): Promise<void> {
+  action: "add" | "remove",
+  seedNames: string[] = []
+): Promise<string[]> {
   const cleanOrg = normalizeOrgName(orgName);
-  if (!user?.id || !isValidOrgSlug(cleanOrg)) return;
-
-  try {
-    const details = await fetchGitHubOrgDetails(cleanOrg);
-    const canonicalName = details?.login || cleanOrg;
-    const existingOrgs: UserOrgMembership[] = Array.isArray(
-      user.user_metadata?.github_orgs
-    )
-      ? user.user_metadata.github_orgs
-      : [];
-
-    const filtered = existingOrgs.filter(
-      (o) => normalizeOrgName(o.login).toLowerCase() !== canonicalName.toLowerCase()
-    );
-
-    const updatedOrgs: UserOrgMembership[] = [
-      {
-        login: canonicalName,
-        avatarUrl: details?.avatarUrl,
-        htmlUrl: details?.htmlUrl || `https://github.com/${canonicalName}`,
-        description: details?.description,
-        role: isOwner ? "admin" : "member",
-      },
-      ...filtered,
-    ];
-
-    await supabaseAdmin.auth.admin.updateUserById(user.id, {
-      user_metadata: {
-        ...(user.user_metadata || {}),
-        github_orgs: updatedOrgs,
-      },
-    });
-  } catch (err) {
-    console.warn("[saveConnectedOrgToUserMetadata] Could not persist org to metadata:", err);
+  if (!userId || !isValidOrgSlug(cleanOrg)) {
+    throw new Error("유효한 GitHub Organization 이름이 아닙니다.");
   }
+
+  // 요청 시점의 user 객체는 오래됐을 수 있으므로 최신 값을 다시 읽는다
+  const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+  if (error || !data?.user) {
+    throw error || new Error("사용자 정보를 찾을 수 없습니다.");
+  }
+  const freshUser = data.user;
+
+  const current = getRegisteredOrgNames(freshUser) ?? seedNames;
+  const key = cleanOrg.toLowerCase();
+  const withoutTarget = current.filter((n) => n.toLowerCase() !== key);
+
+  let canonicalName = cleanOrg;
+  if (action === "add") {
+    const details = await fetchGitHubOrgDetails(cleanOrg);
+    canonicalName = details?.login || cleanOrg;
+  }
+  const next = action === "add" ? [...withoutTarget, canonicalName] : withoutTarget;
+
+  const update: Record<string, any> = {
+    app_metadata: {
+      ...(freshUser.app_metadata || {}),
+      registered_orgs: next,
+    },
+  };
+
+  if (action === "remove" && Array.isArray(freshUser.user_metadata?.github_orgs)) {
+    update.user_metadata = {
+      ...(freshUser.user_metadata || {}),
+      github_orgs: freshUser.user_metadata.github_orgs.filter(
+        (o: any) => normalizeOrgName(String(o?.login || "")).toLowerCase() !== key
+      ),
+    };
+  }
+
+  const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(
+    userId,
+    update
+  );
+  if (updateErr) throw updateErr;
+
+  return next;
 }

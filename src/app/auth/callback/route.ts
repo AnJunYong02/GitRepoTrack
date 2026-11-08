@@ -5,6 +5,7 @@ import {
   checkIsOrgOwner,
   checkIsOrgOwnerWithUserToken,
   listUserOrgMembershipsWithToken,
+  listVerifiedEmailsWithToken,
   UserOrgMembership,
 } from "@/lib/github/app";
 import { ACTIVE_ORG_COOKIE } from "@/lib/org/active-org";
@@ -34,11 +35,14 @@ export async function GET(request: Request) {
       if (githubId && githubLogin) {
         let role: "student" | "staff" = "student";
         let userOrgs: UserOrgMembership[] = [];
+        let membershipsFetched = false;
 
         try {
           // 1. Fetch all organizations connected to the user's GitHub account using OAuth provider token
           if (providerToken) {
-            userOrgs = await listUserOrgMembershipsWithToken(providerToken);
+            const fetched = await listUserOrgMembershipsWithToken(providerToken);
+            membershipsFetched = fetched !== null;
+            userOrgs = fetched ?? [];
             if (userOrgs.some((o) => o.role === "admin")) {
               role = "staff";
               console.log(
@@ -64,12 +68,22 @@ export async function GET(request: Request) {
             }
           }
 
-          // Save user's connected GitHub organizations into user_metadata for instant toggle switching
-          if (userOrgs.length > 0) {
+          // GitHub 계정에 인증된 이메일 목록 (학생 repo 일괄 생성 때 명단 CSV 이메일과 매칭)
+          const verifiedEmails = providerToken
+            ? await listVerifiedEmailsWithToken(providerToken)
+            : null;
+
+          // GitHub 멤버십·인증 이메일을 app_metadata에 저장 (서비스 롤만 수정 가능 → 사용자가 위조할 수 없음)
+          // 조회에 성공했다면 결과가 비어 있어도 저장해 탈퇴한 org/삭제한 이메일이 남지 않게 한다
+          const appMetadataUpdate: Record<string, unknown> = {};
+          if (membershipsFetched) appMetadataUpdate.github_orgs = userOrgs;
+          if (verifiedEmails !== null) appMetadataUpdate.github_verified_emails = verifiedEmails;
+
+          if (Object.keys(appMetadataUpdate).length > 0) {
             await supabaseAdmin.auth.admin.updateUserById(user.id, {
-              user_metadata: {
-                ...(user.user_metadata || {}),
-                github_orgs: userOrgs,
+              app_metadata: {
+                ...(user.app_metadata || {}),
+                ...appMetadataUpdate,
               },
             });
           }

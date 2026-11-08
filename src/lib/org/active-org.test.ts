@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { normalizeOrgName, checkUserOrgRole, getDefaultOrgName } from "@/lib/github/app";
-import { isValidOrgSlug, checkIsUserOwnerOfOrg } from "./active-org";
+import {
+  isValidOrgSlug,
+  checkIsUserOwnerOfOrg,
+  getRegisteredOrgNames,
+  getLegacyOrgNames,
+} from "./active-org";
 
 vi.mock("@/lib/github/app", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/github/app")>();
@@ -89,10 +94,10 @@ describe("checkIsUserOwnerOfOrg", () => {
     expect(await checkIsUserOwnerOfOrg("invalid/slug", { id: "u1" })).toBe(false);
   });
 
-  it("returns true when user.user_metadata.github_orgs indicates admin role", async () => {
+  it("returns true when user.app_metadata.github_orgs indicates admin role", async () => {
     const user = {
       id: "user-123",
-      user_metadata: {
+      app_metadata: {
         github_orgs: [
           { login: "MyOrg", role: "admin" },
           { login: "OtherOrg", role: "member" },
@@ -105,10 +110,23 @@ describe("checkIsUserOwnerOfOrg", () => {
     expect(isOwner).toBe(true);
   });
 
-  it("returns false when user.user_metadata.github_orgs only has member role", async () => {
+  it("does not trust admin role written to user-editable user_metadata", async () => {
+    // user_metadata는 사용자가 supabase.auth.updateUser()로 직접 고칠 수 있으므로 무시해야 한다
     const user = {
       id: "user-123",
       user_metadata: {
+        github_orgs: [{ login: "MyOrg", role: "admin" }],
+      },
+    };
+
+    const isOwner = await checkIsUserOwnerOfOrg("MyOrg", user, { role: "student" });
+    expect(isOwner).toBe(false);
+  });
+
+  it("returns false when user.app_metadata.github_orgs only has member role", async () => {
+    const user = {
+      id: "user-123",
+      app_metadata: {
         github_orgs: [
           { login: "MyOrg", role: "member" },
         ],
@@ -152,5 +170,28 @@ describe("checkIsUserOwnerOfOrg", () => {
 
     const isOtherOwner = await checkIsUserOwnerOfOrg("DifferentOrg", user, profile);
     expect(isOtherOwner).toBe(false);
+  });
+});
+
+describe("registered / legacy org helpers", () => {
+  it("returns null when registered_orgs has never been saved", () => {
+    expect(getRegisteredOrgNames({ app_metadata: {} })).toBeNull();
+    expect(getRegisteredOrgNames(undefined)).toBeNull();
+  });
+
+  it("normalizes and filters registered org names", () => {
+    expect(
+      getRegisteredOrgNames({
+        app_metadata: { registered_orgs: ["OODP", "https://github.com/MyOrg", "bad slug"] },
+      })
+    ).toEqual(["OODP", "MyOrg"]);
+  });
+
+  it("returns only valid org names from legacy user_metadata", () => {
+    expect(
+      getLegacyOrgNames({
+        user_metadata: { github_orgs: [{ login: "team", role: "admin" }, { login: "" }] },
+      })
+    ).toEqual(["team"]);
   });
 });
