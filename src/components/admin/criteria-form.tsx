@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X, Save, CheckCircle } from "lucide-react";
+import { Plus, X, Save, CheckCircle, Trash2 } from "lucide-react";
 
 interface CriteriaFormProps {
   assignmentId: string;
@@ -55,6 +55,13 @@ export function CriteriaForm({ assignmentId, initialRules, onSaved }: CriteriaFo
 
   const handleRemoveKeyword = (keywordToRemove: string) => {
     setKeywords(keywords.filter((k) => k !== keywordToRemove));
+  };
+
+  // 키워드 전체 삭제 (저장 버튼을 눌러야 서버에 반영됨)
+  const handleClearKeywords = () => {
+    if (keywords.length === 0) return;
+    if (!window.confirm(`키워드 ${keywords.length}개를 모두 삭제할까요?`)) return;
+    setKeywords([]);
   };
 
   const handleSave = async () => {
@@ -128,13 +135,25 @@ export function CriteriaForm({ assignmentId, initialRules, onSaved }: CriteriaFo
 
       {/* README Header Keywords Customizer */}
       <div className="space-y-2.5 border-t border-slate-100 dark:border-slate-800 pt-4">
-        <div>
-          <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-            README 필수 대제목 키워드 목록
-          </label>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            README 내에 해당 대제목(#, ##, ### 등)이 포함되어 있지 않으면 미충족으로 판정됩니다.
-          </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              README 필수 대제목 키워드 목록
+            </label>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              README 내에 해당 대제목(#, ##, ### 등)이 포함되어 있지 않으면 미충족으로 판정됩니다.
+            </p>
+          </div>
+          {keywords.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClearKeywords}
+              className="inline-flex items-center gap-1 rounded-lg border border-red-200 dark:border-red-900 px-2.5 py-1.5 text-[11px] font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 shrink-0"
+            >
+              <Trash2 className="w-3 h-3" />
+              <span>전체 삭제</span>
+            </button>
+          )}
         </div>
 
         {/* Tag chips */}
