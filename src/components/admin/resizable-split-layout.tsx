@@ -134,10 +134,6 @@ export function ResizableSplitLayout({
     <div className="space-y-2">
       {/* Subtle Top Guide Bar (Desktop Only) */}
       <div className="hidden lg:flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500 px-1">
-        <span>
-          💡 가운데 구분선을 좌우로 당겨서 <strong>과제 조건 영역({Math.round(leftPercent)}%)</strong>과{" "}
-          <strong>학생 Repo 목록 영역({Math.round(rightPercent)}%)</strong> 크기를 조절할 수 있습니다.
-        </span>
         {isModified && (
           <button
             type="button"

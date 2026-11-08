@@ -100,7 +100,6 @@ export function BatchAnalyzeButton({
     <div className="flex flex-wrap items-center gap-2">
       {needsInitialAnalysis && (
         <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950/70 px-2.5 py-1 text-[11px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-500/30 animate-pulse">
-          <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400" />
           <span>미분석 {unanalyzedCount}명 · 먼저 클릭해주세요 👉</span>
         </span>
       )}

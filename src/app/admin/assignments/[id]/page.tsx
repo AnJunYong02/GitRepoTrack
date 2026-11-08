@@ -273,7 +273,7 @@ export default async function AdminAssignmentDetailPage({
                         <strong className="underline decoration-blue-500/60 underline-offset-2">
                           [▶ 분석하기]
                         </strong>{" "}
-                        버튼을 먼저 눌러주세요. 분석이 완료되면 실제 제출 여부, 커밋 수, README 키워드 통과 현황이 즉시 반영됩니다.
+                        버튼을 먼저 눌러주세요.
                       </p>
                     </div>
                   </div>
