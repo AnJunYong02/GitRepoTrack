@@ -26,7 +26,7 @@ export default function DashboardLoading() {
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2 font-bold text-base tracking-tight">
             <GitBranch className="w-5 h-5 text-blue-600" />
-            <span>RepoTrack</span>
+            <span>GitRepoTrack</span>
           </div>
         </div>
       </header>

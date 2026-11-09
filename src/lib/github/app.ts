@@ -403,7 +403,7 @@ export async function checkIsOrgOwner(username: string, orgName?: string): Promi
 /**
  * 로그인한 사용자의 GitHub 계정에 등록·인증된 이메일 목록(비공개 이메일 포함)을 가져온다.
  * OAuth scope `user:email`이 필요하다. 공개 프로필 검색으로는 비공개 이메일을 찾을 수 없으므로,
- * 학생이 RepoTrack에 로그인할 때 이 목록을 받아 두었다가 명단 CSV의 이메일과 매칭한다.
+ * 학생이 GitRepoTrack에 로그인할 때 이 목록을 받아 두었다가 명단 CSV의 이메일과 매칭한다.
  * 실패하면 null (기존 저장값을 지우지 않도록 "이메일 없음([])"과 구분).
  */
 export async function listVerifiedEmailsWithToken(

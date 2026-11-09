@@ -154,7 +154,7 @@ export function OrgSelectorView({
     }
   };
 
-  // 등록된 org 카드 삭제 (RepoTrack 등록 목록에서만 제거)
+  // 등록된 org 카드 삭제 (GitRepoTrack 등록 목록에서만 제거)
   const handleUnregister = async (orgName: string) => {
     const confirmed = window.confirm(
       `"${orgName}"을(를) 대시보드 목록에서 삭제할까요?\n\nGitHub Organization과 과제·학생 데이터는 삭제되지 않으며, 언제든 다시 등록할 수 있습니다.`

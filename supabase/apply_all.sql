@@ -1,5 +1,5 @@
 -- ==========================================
--- RepoTrack All-in-One Supabase Setup Script
+-- GitRepoTrack All-in-One Supabase Setup Script
 -- ==========================================
 
 -- 1. Enable UUID Extension

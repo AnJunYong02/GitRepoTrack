@@ -24,7 +24,7 @@ export type CollaboratorStatus =
  * GitHub ID를 어디서 얻었는지
  * - csv: 명단 CSV의 GitHub 열
  * - previous-repo: 이전 과제 repo의 collaborator
- * - verified-email: RepoTrack 로그인 때 저장한 GitHub 인증 이메일과 일치 (비공개 이메일도 가능)
+ * - verified-email: GitRepoTrack 로그인 때 저장한 GitHub 인증 이메일과 일치 (비공개 이메일도 가능)
  * - email: GitHub 공개 이메일 검색
  */
 export type GithubLoginSource = "csv" | "previous-repo" | "verified-email" | "email";
@@ -52,7 +52,7 @@ export interface EmailSearchState {
 export const MISSING_REASONS = {
   noInfo: "이전 과제 repo·이메일 정보 없음",
   emailNotFound:
-    "일치하는 GitHub 계정 없음 — 학생이 RepoTrack에 로그인하지 않았거나, 이 이메일이 GitHub 계정에 등록되지 않음",
+    "일치하는 GitHub 계정 없음 — 학생이 GitRepoTrack에 로그인하지 않았거나, 이 이메일이 GitHub 계정에 등록되지 않음",
   rateLimited: "GitHub 검색 제한 — 잠시 후 다시 미리보기",
 } as const;
 
@@ -157,7 +157,7 @@ export async function resolveLoginByEmail(
 }
 
 /**
- * RepoTrack에 로그인한 사용자들의 GitHub 인증 이메일 목록을 모은다(요청당 1회).
+ * GitRepoTrack에 로그인한 사용자들의 GitHub 인증 이메일 목록을 모은다(요청당 1회).
  * app_metadata.github_verified_emails는 로그인 callback에서 서비스 롤로만 저장되므로 위조할 수 없다.
  */
 export async function loadVerifiedEmailIndex(): Promise<VerifiedEmailUser[]> {
@@ -201,7 +201,7 @@ export async function loadVerifiedEmailIndex(): Promise<VerifiedEmailUser[]> {
 
 /**
  * 학생 GitHub ID 결정:
- * CSV GitHub 열 → 이전 과제 repo collaborator → RepoTrack 로그인 인증 이메일 → 공개 이메일 검색 → 없음(이유)
+ * CSV GitHub 열 → 이전 과제 repo collaborator → GitRepoTrack 로그인 인증 이메일 → 공개 이메일 검색 → 없음(이유)
  * 미리보기와 실제 생성에서 같은 순서를 쓰도록 한 곳에 모은다.
  */
 export async function resolveStudentLogin(params: {

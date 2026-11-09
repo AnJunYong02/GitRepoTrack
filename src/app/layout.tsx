@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "RepoTrack - Github Repo 분석 서비스",
+  title: "GitRepoTrack - Github Repo 분석 서비스",
   description: "GitHub Organization 기반 Repo 분석 관리 서비스",
 };
 

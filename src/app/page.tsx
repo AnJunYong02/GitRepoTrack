@@ -15,7 +15,7 @@ export default async function Home() {
       <div className="max-w-2xl space-y-6">
         <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 dark:bg-blue-950/60 px-4 py-1.5 text-sm font-medium text-blue-700 dark:text-blue-300 ring-1 ring-inset ring-blue-700/10">
           <GitBranch className="w-4 h-4" />
-          <span>RepoTrack 학생 과제 분석 시스템</span>
+          <span>GitRepoTrack 학생 과제 분석 시스템</span>
         </div>
         <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
           GitHub Organization 과제 추적 & 제출 분석

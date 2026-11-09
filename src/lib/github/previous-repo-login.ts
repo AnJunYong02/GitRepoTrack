@@ -123,7 +123,7 @@ export interface VerifiedEmailUser {
 }
 
 /**
- * 명단 CSV 이메일과 RepoTrack 로그인 때 저장한 "GitHub 인증 이메일"을 비교해 학생 계정을 고른다.
+ * 명단 CSV 이메일과 GitRepoTrack 로그인 때 저장한 "GitHub 인증 이메일"을 비교해 학생 계정을 고른다.
  * 일치하는 사용자가 정확히 1명일 때만 반환한다(대소문자 무시).
  */
 export function matchLoginByVerifiedEmail(

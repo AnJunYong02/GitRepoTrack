@@ -105,8 +105,8 @@ function GithubLoginCell({ student }: { student: PreviewStudent }) {
       ? {
           label: "로그인 이메일",
           title: student.sourceEmail
-            ? `RepoTrack 로그인 때 확인된 GitHub 인증 이메일(${student.sourceEmail})과 일치`
-            : "RepoTrack 로그인 때 확인된 GitHub 인증 이메일과 일치",
+            ? `GitRepoTrack 로그인 때 확인된 GitHub 인증 이메일(${student.sourceEmail})과 일치`
+            : "GitRepoTrack 로그인 때 확인된 GitHub 인증 이메일과 일치",
           className: "bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300",
         }
       : student.githubSource === "email"
@@ -298,7 +298,7 @@ export function CreateStudentReposPanel({ orgName }: { orgName: string }) {
             <h3 className="text-sm font-bold">학생 Repo 일괄 생성 · {orgName}</h3>
             <p className="text-[11px] text-slate-500 mt-0.5">
               학생 명단(시크릿)대로 private repo를 만들고, 각 학생 1명만 push 권한 collaborator로 등록합니다.
-              명단에 GitHub ID가 없으면 이전 과제 repo의 collaborator → 학생이 RepoTrack 로그인 때 확인된 GitHub 이메일 → 공개 이메일 검색 순으로 찾습니다.
+              명단에 GitHub ID가 없으면 이전 과제 repo의 collaborator → 학생이 GitRepoTrack 로그인 때 확인된 GitHub 이메일 → 공개 이메일 검색 순으로 찾습니다.
             </p>
           </div>
           <button

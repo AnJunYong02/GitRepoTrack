@@ -44,7 +44,7 @@ export default function LoginPage() {
         </div>
 
         <div className="space-y-1">
-          <h1 className="text-xl font-bold tracking-tight">RepoTrack 로그인</h1>
+          <h1 className="text-xl font-bold tracking-tight">GitRepoTrack 로그인</h1>
           <p className="text-xs text-slate-500">
             GitHub 계정으로 로그인하여 본인 과제 분석 및 현황을 확인하세요.
           </p>
