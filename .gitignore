@@ -1,5 +1,7 @@
-/docs/plans
-/.claude/settings.local.json
+docs/
+.claude/
+CLAUDE.md
+.mcp.json
 
 # Dependencies
 node_modules/
