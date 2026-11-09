@@ -19,6 +19,26 @@ export function sanitizeSegment(value: string): string {
 }
 
 /**
+ * 학생별 폴더명. 이름이 있으면 `학번_이름_repo`, 없으면 `학번_repo`.
+ * 학번도 없으면 `미등록_...`으로 표시한다.
+ */
+export function buildStudentFolderName({
+  studentNo,
+  studentName,
+  repo,
+}: {
+  studentNo?: string | null;
+  studentName?: string | null;
+  repo: string;
+}): string {
+  const parts = [studentNo?.trim() || "미등록"];
+  const name = studentName?.trim();
+  if (name) parts.push(name);
+  parts.push(repo);
+  return sanitizeSegment(parts.join("_"));
+}
+
+/**
  * GitHub zipball 내부 경로(`owner-repo-sha/src/a.txt`)를
  * 학생 폴더 기준 경로(`학번_이름_repo/src/a.txt`)로 변환한다.
  * 최상위 폴더(`owner-repo-sha/`) 접두사는 제거하며,
@@ -67,9 +87,13 @@ export function createAssignmentZipStream(
       for (const item of items) {
         const [owner, repo] = item.fullName.split("/");
         const safeStudentNo = item.studentNo || "미등록";
-        const safeName = item.studentName || item.githubLogin;
+        const safeName = item.studentName?.trim() || "";
         // 학생별 폴더명 (중첩 zip이 아니라 폴더로 풀어 넣는다)
-        const folderName = sanitizeSegment(`${safeStudentNo}_${safeName}_${repo}`);
+        const folderName = buildStudentFolderName({
+          studentNo: item.studentNo,
+          studentName: safeName,
+          repo,
+        });
 
         try {
           const octokit = await getInstallationOctokit(owner);

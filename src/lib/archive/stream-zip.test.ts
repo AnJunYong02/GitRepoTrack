@@ -1,5 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeSegment, toFolderEntryPath } from "./stream-zip";
+import { buildStudentFolderName, sanitizeSegment, toFolderEntryPath } from "./stream-zip";
+
+describe("buildStudentFolderName", () => {
+  const repo = "assign09-c01-22100063";
+
+  it("이름이 있으면 학번_이름_repo", () => {
+    expect(buildStudentFolderName({ studentNo: "22100063", studentName: "홍길동", repo })).toBe(
+      "22100063_홍길동_assign09-c01-22100063"
+    );
+  });
+
+  it("이름이 없으면 학번_repo (unknown을 넣지 않는다)", () => {
+    expect(buildStudentFolderName({ studentNo: "22100063", studentName: null, repo })).toBe(
+      "22100063_assign09-c01-22100063"
+    );
+    expect(buildStudentFolderName({ studentNo: "22100063", studentName: "  ", repo })).toBe(
+      "22100063_assign09-c01-22100063"
+    );
+  });
+
+  it("학번이 없으면 미등록, 금지문자는 밑줄로 치환", () => {
+    expect(buildStudentFolderName({ studentNo: null, studentName: "a/b", repo })).toBe(
+      "미등록_a_b_assign09-c01-22100063"
+    );
+  });
+});
 
 describe("toFolderEntryPath", () => {
   const folder = "22100063_홍길동_assign09-c01";
