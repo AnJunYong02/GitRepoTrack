@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { checkReadmeKeywords, extractHeadingLines } from "./readme";
+import { checkReadmeKeywords, normalizeForKeywordMatch } from "./readme";
 
-describe("README 대제목 키워드 검사기", () => {
+describe("README 키워드 포함 검사기", () => {
   const weeklyKeywords = [
     "Key Learning",
     "Problem & Solution",
@@ -166,5 +166,29 @@ GPT-4 활용
   it("빈 README나 빈 키워드 목록 처리", () => {
     expect(checkReadmeKeywords("", weeklyKeywords).satisfied).toBe(false);
     expect(checkReadmeKeywords("# Hello", []).satisfied).toBe(true);
+  });
+
+  it("대제목이 아니어도 본문 문장 속에 키워드가 있으면 통과", () => {
+    const readme = "이번 과제의 Code Review는 팀원과 진행했고, key learning도 정리했다.";
+    const result = checkReadmeKeywords(readme, ["Code Review", "Key Learning"]);
+    expect(result.satisfied).toBe(true);
+  });
+
+  it("띄어쓰기를 무시한다 (실행방법 = 실행 방법)", () => {
+    expect(checkReadmeKeywords("## 실행 방법\n내용", ["실행방법"]).satisfied).toBe(true);
+    expect(checkReadmeKeywords("실행방법: npm run dev", ["실행 방법"]).satisfied).toBe(true);
+    expect(checkReadmeKeywords("Key\tLearning", ["KeyLearning"]).satisfied).toBe(true);
+  });
+
+  it("README에 없는 키워드는 미충족", () => {
+    const result = checkReadmeKeywords("## 과제 소개\n내용", ["과제 소개", "실행 방법"]);
+    expect(result.satisfied).toBe(false);
+    expect(result.missingKeywords).toEqual(["실행 방법"]);
+  });
+});
+
+describe("normalizeForKeywordMatch", () => {
+  it("모든 공백을 지우고 소문자로 만든다", () => {
+    expect(normalizeForKeywordMatch(" Key  Learning\n\u3000끝 ")).toBe("keylearning끝");
   });
 });

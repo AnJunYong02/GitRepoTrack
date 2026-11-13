@@ -9,78 +9,18 @@ export interface ReadmeCheckResult {
   details: KeywordDetail[];
 }
 
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-// 영문/숫자 리스트 마커: "- ", "* ", "+ ", "1. ", "2) "
-const ASCII_LIST_REGEX = /^([-*+]|\d+[.)])\s+(.*)/;
-
-// 원문자·유니코드 번호(①~⑳, ⑴~⒇, ⒈~⒛, ⓪~⓿, ❶~❿, ㉑~㉟, ㊱~㊿, ㉠~㉻, Ⅰ~Ⅻ 등),
-// 괄호 번호((1), [1]) 및 주요 글머리 기호(■, ▶, ●, ✅ 등). 마커 뒤 공백은 선택(①과제 소개).
-const SYMBOL_MARKER_REGEX =
-  /^(?:[•■□◆◇●○▶▷★☆✓✔✅📌💡🔹🔸]|[\u2460-\u24FF\u2776-\u2793\u3251-\u325F\u32B1-\u32BF\u3200-\u321E\u3260-\u327B\u2160-\u217F]+|\(\d+\)|\[\d+\])\s*(.+)$/u;
-
 /**
- * Extracts markdown heading lines (#, ##, ###), bold leading labels (**Keyword**:),
- * list items with leading keywords (- Keyword, 1. Keyword, etc.), and lines prefixed
- * with circled numbers / bracketed numbers / bullet symbols (① Keyword, (1) Keyword, ■ Keyword)
+ * 비교용 정규화: 모든 공백 문자(스페이스·탭·줄바꿈·전각 공백)를 제거하고 소문자로 바꾼다.
+ * 그래서 "실행 방법"과 "실행방법", "Key Learning"과 "keylearning"을 같은 것으로 본다.
  */
-export function extractHeadingLines(content: string): string[] {
-  if (!content) return [];
-
-  const lines = content.split(/\r?\n/);
-  const headings: string[] = [];
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-
-    // Matches markdown headings: # Heading, ## Heading, etc.
-    if (/^#{1,6}\s+/.test(trimmed)) {
-      headings.push(trimmed.replace(/^#{1,6}\s+/, "").trim());
-      continue;
-    }
-
-    // Strip leading list / numbering markers (can be stacked, e.g. "- ① Keyword")
-    let rest = trimmed;
-    let hasMarker = false;
-    for (let i = 0; i < 3; i++) {
-      const asciiMatch = rest.match(ASCII_LIST_REGEX);
-      if (asciiMatch && asciiMatch[2]) {
-        rest = asciiMatch[2].trim();
-        hasMarker = true;
-        continue;
-      }
-      const symbolMatch = rest.match(SYMBOL_MARKER_REGEX);
-      if (symbolMatch && symbolMatch[1]) {
-        rest = symbolMatch[1].trim();
-        hasMarker = true;
-        continue;
-      }
-      break;
-    }
-
-    if (hasMarker && rest) {
-      // Remove leading bold tags if present: **Keyword**: or **Keyword**
-      rest = rest.replace(/^(\*\*|__)(.*?)\1[:\s]*/, "$2 ");
-      headings.push(rest.trim());
-      continue;
-    }
-
-    // Matches leading bold labels: **Key Learning**: or __Key Learning__: or a standalone **Keyword** line
-    const boldLabelMatch = trimmed.match(/^(\*\*|__)(.*?)\1(?:[:\s]|$)/);
-    if (boldLabelMatch && boldLabelMatch[2]) {
-      headings.push(boldLabelMatch[2].trim());
-    }
-  }
-
-  return headings;
+export function normalizeForKeywordMatch(text: string): string {
+  return text.replace(/\s+/gu, "").toLowerCase();
 }
 
 /**
- * Evaluates whether the required heading keywords exist in the README.
- * Matching is case-insensitive and ignores extra whitespace.
+ * README에 필수 키워드가 포함되어 있는지 검사한다.
+ * 대제목(#) 여부와 상관없이 README 어디에든 키워드 문구가 들어 있으면 통과한다.
+ * 대소문자와 띄어쓰기는 무시한다.
  */
 export function checkReadmeKeywords(
   readmeContent: string,
@@ -102,20 +42,17 @@ export function checkReadmeKeywords(
     };
   }
 
-  const headingLines = extractHeadingLines(readmeContent);
+  const normalizedReadme = normalizeForKeywordMatch(readmeContent);
 
   const details: KeywordDetail[] = requiredKeywords.map((keyword) => {
     const trimmedKeyword = keyword.trim();
-    if (!trimmedKeyword) return { keyword, found: true };
+    const normalizedKeyword = normalizeForKeywordMatch(trimmedKeyword);
+    // 공백만 있는 키워드는 검사 대상이 아니므로 통과 처리
+    if (!normalizedKeyword) return { keyword, found: true };
 
-    const escaped = escapeRegex(trimmedKeyword);
-    // Matches keyword within heading line as a discrete phrase
-    const regex = new RegExp(`(^|[^a-zA-Z0-9가-힣])${escaped}($|[^a-zA-Z0-9가-힣])`, "i");
-
-    const found = headingLines.some((heading) => regex.test(heading));
     return {
       keyword: trimmedKeyword,
-      found,
+      found: normalizedReadme.includes(normalizedKeyword),
     };
   });
 
