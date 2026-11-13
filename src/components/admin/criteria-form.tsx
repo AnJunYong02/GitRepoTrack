@@ -109,7 +109,7 @@ export function CriteriaForm({ assignmentId, initialRules, onSaved }: CriteriaFo
       <div className="border-b border-slate-100 dark:border-slate-800 pb-3.5">
         <h2 className="text-base font-bold">과제 제출 기준 및 README 검사 설정</h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          README 필수 대제목 키워드, 기준 브랜치, 최소 커밋 수를 설정합니다.
+          README 필수 키워드, 기준 브랜치, 최소 커밋 수를 설정합니다.
         </p>
       </div>
 
@@ -138,10 +138,10 @@ export function CriteriaForm({ assignmentId, initialRules, onSaved }: CriteriaFo
         <div className="flex items-start justify-between gap-3">
           <div>
             <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-              README 필수 대제목 키워드 목록
+              README 필수 키워드 목록
             </label>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              README 내에 해당 대제목(#, ##, ### 등)이 포함되어 있지 않으면 미충족으로 판정됩니다.
+              README 어디에든 해당 키워드가 포함되어 있으면 충족으로 판정합니다. (대소문자·띄어쓰기 무시)
             </p>
           </div>
           {keywords.length > 0 && (

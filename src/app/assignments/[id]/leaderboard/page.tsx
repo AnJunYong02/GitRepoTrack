@@ -214,7 +214,7 @@ export default async function LeaderboardPage({
           <div className="text-xs text-slate-500 space-y-1 pt-1">
             <p>
               💡 <strong>순위표 등재 3대 조건</strong>:
-              1) 코드 push 완료 + 2) 최소 커밋 기준({minCommits > 0 ? `${minCommits}개 이상` : "제한 없음"}) 충족 + 3) README 필수 대제목 통과
+              1) 코드 push 완료 + 2) 최소 커밋 기준({minCommits > 0 ? `${minCommits}개 이상` : "제한 없음"}) 충족 + 3) README 필수 키워드 통과
             </p>
             <p className="text-[11px] text-slate-400">
               * 위 3가지 조건을 모두 최초로 충족한 시각이 빠른 순서대로 1등, 2등, 3등... 순위가 부여됩니다.

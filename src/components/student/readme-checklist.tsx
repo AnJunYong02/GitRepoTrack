@@ -94,7 +94,7 @@ export function ReadmeChecklist({
 
       {totalCount === 0 ? (
         <div className="rounded-lg border border-slate-100 dark:border-slate-800 p-3 text-xs text-slate-500">
-          설정된 README 필수 대제목 키워드가 없거나 아직 분석 전입니다.
+          설정된 README 필수 키워드가 없거나 아직 분석 전입니다.
         </div>
       ) : (
         <>
@@ -208,11 +208,11 @@ export function ReadmeChecklist({
 
           {!satisfied && missingKeywords.length > 0 && (
             <p className="text-[11px] text-slate-500 pt-1">
-              💡 인식이 안 된 키워드가 있다면 README 파일에 마크다운 대제목(예:{" "}
+              💡 인식이 안 된 키워드가 있다면 README 파일에 해당 문구(예:{" "}
               <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">
-                ## {missingKeywords[0]}
+                {missingKeywords[0]}
               </code>
-              ) 형식으로 작성한 뒤 다시 push하고 <strong>[GitHub 새로고침]</strong>을 눌러보세요.
+              )를 포함해 작성한 뒤 다시 push하고 <strong>[GitHub 새로고침]</strong>을 눌러보세요.
             </p>
           )}
         </>
@@ -223,8 +223,8 @@ export function ReadmeChecklist({
             <div className="space-y-0.5 leading-relaxed">
                 <p className="font-semibold">README 키워드 분석 기준</p>
                 <p className="text-[11px] text-blue-700/90 dark:text-blue-300/90">
-                    키워드 검사는 마크다운 대제목(<code className="font-mono">#</code>, <code className="font-mono">##</code>) 및 목록 형식을 기준으로 자동 분석되므로,<br/>
-                    작성 양식이나 특수문자·띄어쓰기 차이로 인해 실제로 작성하셨더라도 일부 키워드를 감지하지 못하거나 검사 결과가 정확하지 않을 수 있습니다.
+                    README 어디에든 키워드 문구가 포함되어 있으면 충족으로 판정합니다. (대소문자·띄어쓰기 무시)<br/>
+                    철자나 특수문자가 다르면 감지되지 않을 수 있으니 키워드를 그대로 적어주세요.
                 </p>
             </div>
         </div>

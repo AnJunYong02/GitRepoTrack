@@ -218,7 +218,7 @@ export default async function AdminAssignmentsPage({
             </div>
             <h1 className="text-2xl font-bold mt-2">과제 관리 및 제출 현황</h1>
             <p className="text-xs text-slate-500">
-              담당 과제의 학생 제출 현황을 확인하고, README 대제목 기준을 설정하며, 단일 ZIP 일괄 다운로드를 수행합니다.
+              담당 과제의 학생 제출 현황을 확인하고, README 키워드 기준을 설정하며, 단일 ZIP 일괄 다운로드를 수행합니다.
             </p>
           </div>
 
