@@ -97,8 +97,10 @@ export async function resolveActiveOrg(
 }
 
 /**
- * Checks whether the given user is an Owner (admin) of a specific GitHub Organization.
- * Also promotes `profiles.role` to "staff" if the user is verified as an Owner of the Organization.
+ * 사용자가 특정 GitHub Organization의 Owner(admin)인지 org별로 판단한다.
+ * 계정 전체 role(profiles.role)은 사용하지 않는다. 판정 근거:
+ * 1. 로그인 때 저장한 app_metadata.github_orgs (서비스 롤만 수정 가능)
+ * 2. GitHub App으로 조회한 org 멤버십 역할 (5분 캐시)
  */
 export async function checkIsUserOwnerOfOrg(
   orgName: string,
@@ -110,19 +112,10 @@ export async function checkIsUserOwnerOfOrg(
 
   // app_metadata만 신뢰 (user_metadata의 role은 사용자가 위조 가능)
   const metaOrgs = getTrustedMembershipOrgs(user);
-
   const matchedMeta = metaOrgs.find(
     (o) => normalizeOrgName(o.login).toLowerCase() === cleanOrg.toLowerCase()
   );
-  if (matchedMeta?.role === "admin") {
-    if (profile && profile.role !== "staff") {
-      await supabaseAdmin
-        .from("profiles")
-        .update({ role: "staff", updated_at: new Date().toISOString() })
-        .eq("id", user.id);
-    }
-    return true;
-  }
+  if (matchedMeta?.role === "admin") return true;
 
   const githubLogin =
     profile?.github_login ||
@@ -132,24 +125,7 @@ export async function checkIsUserOwnerOfOrg(
 
   if (githubLogin) {
     const appRole = await checkUserOrgRole(githubLogin, cleanOrg);
-    if (appRole === "admin") {
-      if (profile && profile.role !== "staff") {
-        await supabaseAdmin
-          .from("profiles")
-          .update({ role: "staff", updated_at: new Date().toISOString() })
-          .eq("id", user.id);
-      }
-      return true;
-    }
-  }
-
-  // Fallback: if user has staff role in DB and this is the default org (and no explicit member-only record)
-  if (
-    !matchedMeta &&
-    profile?.role === "staff" &&
-    cleanOrg.toLowerCase() === getDefaultOrgName().toLowerCase()
-  ) {
-    return true;
+    if (appRole === "admin") return true;
   }
 
   return false;
@@ -284,12 +260,7 @@ export async function getAvailableOrganizations(
 
   // 3. Default org fallback
   if (defaultOrg) {
-    const isStaffFallback =
-      metaOrgs.length === 0 && profile?.role === "staff";
-    upsertOrg(defaultOrg, {
-      isDefault: true,
-      userRole: isStaffFallback ? "admin" : undefined,
-    });
+    upsertOrg(defaultOrg, { isDefault: true });
   }
 
   // 4. Count assignments per org_name in DB

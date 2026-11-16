@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireStaff } from "@/lib/auth/guards";
+import { guardErrorStatus, requireOrgOwner } from "@/lib/auth/guards";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getInstallationOctokit } from "@/lib/github/app";
 import { parseRepoName, ParsedRepoInfo } from "@/lib/github/repo-parser";
@@ -14,10 +14,10 @@ const ORG_REPOS_CACHE_TTL_MS = 3 * 60 * 1000;
 
 export async function GET(req: Request) {
   try {
-    await requireStaff();
-
     const url = new URL(req.url);
     const targetOrg = await resolveActiveOrg(url.searchParams.get("org"));
+    // 캐시를 보기 전에 이 org의 Owner인지 확인 (캐시는 사용자 구분 없이 org별로 공유됨)
+    await requireOrgOwner(targetOrg);
     const forceRefresh = url.searchParams.get("refresh") === "1";
     const cacheKey = targetOrg.toLowerCase();
     const cached = orgReposMemoryCache.get(cacheKey);
@@ -150,6 +150,6 @@ export async function GET(req: Request) {
     });
   } catch (err: any) {
     console.error("[GET /api/admin/org-repos] Error:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err.message }, { status: guardErrorStatus(err) });
   }
 }

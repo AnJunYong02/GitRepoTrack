@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { checkIsUserOwnerOfOrg } from "@/lib/org/active-org";
 
 export async function getCurrentUser() {
   const supabase = await createClient();
@@ -23,12 +24,37 @@ export async function requireUser() {
   return current;
 }
 
-export async function requireStaff() {
+/**
+ * 선택한 org의 Owner만 통과시킨다. 권한은 계정 전체가 아니라 org마다 따로 판단한다.
+ */
+export async function requireOrgOwner(orgName: string) {
   const { user, profile } = await requireUser();
-  if (profile?.role !== "staff") {
-    throw new Error("Forbidden: Staff privileges required");
+  const isOwner = await checkIsUserOwnerOfOrg(orgName, user, profile);
+  if (!isOwner) {
+    throw new Error("Forbidden: Owner of this organization required");
   }
   return { user, profile };
+}
+
+/**
+ * 과제가 속한 org의 Owner만 통과시킨다. 과제가 없으면 Not found 에러.
+ */
+export async function requireAssignmentOwner(assignmentId: string) {
+  const { data: assignment, error } = await supabaseAdmin
+    .from("assignments")
+    .select("*")
+    .eq("id", assignmentId)
+    .maybeSingle();
+  if (error || !assignment) {
+    throw new Error("Not found: Assignment not found");
+  }
+  const { user, profile } = await requireOrgOwner(assignment.org_name || "");
+  return { user, profile, assignment };
+}
+
+/** 학생 repo가 속한 org 이름 (과제의 org_name, 없으면 full_name의 owner) */
+function getRepoOrgName(repo: any): string {
+  return repo?.assignments?.org_name || String(repo?.full_name || "").split("/")[0] || "";
 }
 
 /**
@@ -59,9 +85,10 @@ export async function requireStudentRepo(studentRepoId: string) {
     repo.profile_id === user.id ||
     repo.github_id === profile?.github_id ||
     isMatchedByStudentNo;
-  const isStaff = profile?.role === "staff";
+  // 본인 repo가 아니면 그 repo가 속한 org의 Owner일 때만 허용
+  const isOrgOwner = await checkIsUserOwnerOfOrg(getRepoOrgName(repo), user, profile);
 
-  if (!isOwner && !isStaff) {
+  if (!isOwner && !isOrgOwner) {
     throw new Error("Forbidden: You cannot access another student's repository");
   }
 
@@ -73,5 +100,14 @@ export async function requireStudentRepo(studentRepoId: string) {
       .eq("id", repo.id);
   }
 
-  return { user, profile, repo, isStaff };
+  return { user, profile, repo, isOrgOwner };
+}
+
+/** 가드가 던진 에러를 HTTP 상태 코드로 변환 */
+export function guardErrorStatus(error: any): number {
+  const message = String(error?.message || "");
+  if (message.startsWith("Unauthorized")) return 401;
+  if (message.startsWith("Forbidden")) return 403;
+  if (message.startsWith("Not found")) return 404;
+  return 500;
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireStaff } from "@/lib/auth/guards";
+import { guardErrorStatus, requireAssignmentOwner } from "@/lib/auth/guards";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { normalizeOrgName, getInstallationOctokit } from "@/lib/github/app";
 
@@ -11,18 +11,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireStaff();
     const { id: assignmentId } = await params;
-
-    const { data: assignment, error: aErr } = await supabaseAdmin
-      .from("assignments")
-      .select("id, org_name")
-      .eq("id", assignmentId)
-      .single();
-
-    if (aErr || !assignment) {
-      return NextResponse.json({ error: "Assignment not found" }, { status: 404 });
-    }
+    // 과제가 속한 org의 Owner만 허용 (없으면 404)
+    const { assignment } = await requireAssignmentOwner(assignmentId);
 
     const orgName = normalizeOrgName(assignment.org_name);
 
@@ -56,7 +47,7 @@ export async function GET(
       );
     }
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err.message }, { status: guardErrorStatus(err) });
   }
 }
 
@@ -68,18 +59,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireStaff();
     const { id: assignmentId } = await params;
-
-    const { data: assignment, error: aErr } = await supabaseAdmin
-      .from("assignments")
-      .select("id, org_name")
-      .eq("id", assignmentId)
-      .single();
-
-    if (aErr || !assignment) {
-      return NextResponse.json({ error: "Assignment not found" }, { status: 404 });
-    }
+    // 과제가 속한 org의 Owner만 허용 (없으면 404)
+    const { assignment } = await requireAssignmentOwner(assignmentId);
 
     const body = await req.json();
     let { fullName, studentNo, studentName, githubLogin, repoId, githubId } = body;
@@ -149,6 +131,6 @@ export async function POST(
     return NextResponse.json({ success: true, studentRepo });
   } catch (err: any) {
     console.error("Error creating student repo:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err.message }, { status: guardErrorStatus(err) });
   }
 }

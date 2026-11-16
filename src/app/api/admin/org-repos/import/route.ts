@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { requireStaff } from "@/lib/auth/guards";
+import { guardErrorStatus, requireOrgOwner, requireUser } from "@/lib/auth/guards";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { ParsedRepoInfo } from "@/lib/github/repo-parser";
 import { resolveActiveOrg } from "@/lib/org/active-org";
 
 export async function POST(req: Request) {
   try {
-    const { user } = await requireStaff();
+    await requireUser();
     const body = await req.json();
 
     const {
@@ -32,6 +32,12 @@ export async function POST(req: Request) {
     }
 
     const orgName = await resolveActiveOrg(inputOrgName);
+    // 이 org의 Owner만 과제를 등록할 수 있다
+    const { user } = await requireOrgOwner(orgName);
+    // 클라이언트가 보낸 repo 중 이 org에 속한 것만 등록 (다른 org repo 끼워 넣기 방지)
+    const scopedRepos = repos.filter(
+      (r) => String(r?.fullName || "").split("/")[0].toLowerCase() === orgName.toLowerCase()
+    );
     const numMatch = category.match(/([0-9]+)/);
     const defaultTitle = numMatch
       ? `웹서비스 개발 ${parseInt(numMatch[1], 10)}차 과제 (${category})`
@@ -122,7 +128,7 @@ export async function POST(req: Request) {
 
     let importedCount = 0;
 
-    for (const r of repos) {
+    for (const r of scopedRepos) {
       // Determine student_no and unique numeric github_id
       const studentNo = r.studentNo || null;
       // If studentNo is an 8-digit number, use it as unique fallback github_id
@@ -176,6 +182,6 @@ export async function POST(req: Request) {
     });
   } catch (err: any) {
     console.error("[POST /api/admin/org-repos/import] Error:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err.message }, { status: guardErrorStatus(err) });
   }
 }

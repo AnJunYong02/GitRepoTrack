@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import {
-  checkIsOrgOwner,
-  checkIsOrgOwnerWithUserToken,
   listUserOrgMembershipsWithToken,
   listVerifiedEmailsWithToken,
   UserOrgMembership,
@@ -33,39 +31,16 @@ export async function GET(request: Request) {
       const providerToken = data.session?.provider_token;
 
       if (githubId && githubLogin) {
-        let role: "student" | "staff" = "student";
+        // role은 로그인 시 정하지 않는다. Owner 여부는 org에 들어갈 때 org별로 판단한다(checkIsUserOwnerOfOrg).
         let userOrgs: UserOrgMembership[] = [];
         let membershipsFetched = false;
 
         try {
-          // 1. Fetch all organizations connected to the user's GitHub account using OAuth provider token
+          // 1. GitHub 계정의 org 멤버십(org별 역할)을 OAuth 토큰으로 조회
           if (providerToken) {
             const fetched = await listUserOrgMembershipsWithToken(providerToken);
             membershipsFetched = fetched !== null;
             userOrgs = fetched ?? [];
-            if (userOrgs.some((o) => o.role === "admin")) {
-              role = "staff";
-              console.log(
-                `[Auth Callback] User ${githubLogin} recognized as STAFF (Owner of: ${userOrgs
-                  .filter((o) => o.role === "admin")
-                  .map((o) => o.login)
-                  .join(", ")}).`
-              );
-            } else {
-              const isOwnerWithToken = await checkIsOrgOwnerWithUserToken(providerToken);
-              if (isOwnerWithToken) {
-                role = "staff";
-              }
-            }
-          }
-
-          // 2. Fallback to GitHub App installation token if token didn't match
-          if (role !== "staff") {
-            const isOwnerWithApp = await checkIsOrgOwner(githubLogin);
-            if (isOwnerWithApp) {
-              role = "staff";
-              console.log(`[Auth Callback] User ${githubLogin} recognized as STAFF via GitHub App token.`);
-            }
           }
 
           // GitHub 계정에 인증된 이메일 목록 (학생 repo 일괄 생성 때 명단 CSV 이메일과 매칭)
@@ -88,10 +63,10 @@ export async function GET(request: Request) {
             });
           }
         } catch (err) {
-          console.warn("[Auth Callback] Could not check org owner status, defaulting to student:", err);
+          console.warn("[Auth Callback] Could not fetch GitHub org memberships:", err);
         }
 
-        // Upsert into public.profiles using admin client (bypasses RLS to guarantee role update)
+        // profiles upsert (서비스 롤 사용)
         const { error: upsertError } = await supabaseAdmin
           .from("profiles")
           .upsert(
@@ -99,7 +74,8 @@ export async function GET(request: Request) {
               id: user.id,
               github_id: githubId,
               github_login: githubLogin,
-              role: role,
+              // 예전 계정 전체 staff 표시를 없앤다 (권한은 org별 Owner 판정만 사용)
+              role: "student",
               avatar_url: avatarUrl,
               updated_at: new Date().toISOString(),
             },

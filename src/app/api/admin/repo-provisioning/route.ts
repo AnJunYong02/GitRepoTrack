@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { requireStaff } from "@/lib/auth/guards";
+import { guardErrorStatus, requireOrgOwner } from "@/lib/auth/guards";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { normalizeOrgName } from "@/lib/github/app";
-import { checkIsUserOwnerOfOrg, isValidOrgSlug } from "@/lib/org/active-org";
+import { isValidOrgSlug } from "@/lib/org/active-org";
 import { buildRepoPrefix, normalizeAssignmentPrefix } from "@/lib/github/student-repo-name";
 import { buildProvisionPreview } from "@/lib/github/provision-preview";
 import { defaultAssignmentTitle } from "@/lib/assignments/assignment-match";
@@ -18,31 +18,16 @@ export const maxDuration = 60;
 const PREFIX_ERROR = "과제 접두사는 영문/숫자/밑줄만 사용할 수 있습니다. (예: assign10)";
 
 /**
- * 요청자가 staff이고 해당 Organization의 Owner인지 확인한다.
+ * org 이름을 검증하고, 요청자가 그 Organization의 Owner인지 확인한다.
+ * (Owner가 아니면 guards.requireOrgOwner가 Forbidden 에러를 던진다)
  */
-async function requireOrgOwner(rawOrg: string) {
-  const { user, profile } = await requireStaff();
+async function loadOwnedOrg(rawOrg: string) {
   const org = normalizeOrgName(rawOrg);
   if (!isValidOrgSlug(org)) {
     return { error: NextResponse.json({ error: "Organization 이름이 올바르지 않습니다." }, { status: 400 }) };
   }
-  const isOwner = await checkIsUserOwnerOfOrg(org, user, profile);
-  if (!isOwner) {
-    return {
-      error: NextResponse.json(
-        { error: "이 Organization의 Owner만 학생 repo를 생성할 수 있습니다." },
-        { status: 403 }
-      ),
-    };
-  }
+  const { user } = await requireOrgOwner(org);
   return { org, user };
-}
-
-function errorStatus(err: any): number {
-  const msg = String(err?.message || "");
-  if (msg.includes("Unauthorized")) return 401;
-  if (msg.includes("Forbidden")) return 403;
-  return 500;
 }
 
 /**
@@ -51,7 +36,7 @@ function errorStatus(err: any): number {
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
-    const owner = await requireOrgOwner(url.searchParams.get("org") || "");
+    const owner = await loadOwnedOrg(url.searchParams.get("org") || "");
     if (owner.error) return owner.error;
 
     const prefix = normalizeAssignmentPrefix(url.searchParams.get("prefix") || "");
@@ -72,7 +57,7 @@ export async function GET(req: Request) {
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || "미리보기를 불러오지 못했습니다." },
-      { status: errorStatus(err) }
+      { status: guardErrorStatus(err) }
     );
   }
 }
@@ -84,7 +69,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
-    const owner = await requireOrgOwner(String(body.org || ""));
+    const owner = await loadOwnedOrg(String(body.org || ""));
     if (owner.error) return owner.error;
 
     const prefix = normalizeAssignmentPrefix(String(body.prefix || ""));
@@ -124,7 +109,7 @@ export async function POST(req: Request) {
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || "과제를 준비하지 못했습니다." },
-      { status: errorStatus(err) }
+      { status: guardErrorStatus(err) }
     );
   }
 }

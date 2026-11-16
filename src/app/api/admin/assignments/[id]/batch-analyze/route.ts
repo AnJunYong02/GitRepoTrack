@@ -1,4 +1,4 @@
-import { requireStaff } from "@/lib/auth/guards";
+import { guardErrorStatus, requireAssignmentOwner } from "@/lib/auth/guards";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { runRepoAnalysis } from "@/lib/analysis/run-analysis";
 
@@ -7,8 +7,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireStaff();
     const { id: assignmentId } = await params;
+    await requireAssignmentOwner(assignmentId);
 
     // Fetch all student_repos for this assignment
     const { data: studentRepos, error: sErr } = await supabaseAdmin
@@ -132,7 +132,7 @@ export async function POST(
   } catch (err: any) {
     console.error("[POST /api/admin/assignments/[id]/batch-analyze] Error:", err);
     return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
+      status: guardErrorStatus(err),
       headers: { "Content-Type": "application/json" },
     });
   }

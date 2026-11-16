@@ -10,7 +10,7 @@ import { DeadlineCountdown } from "@/components/student/deadline-countdown";
 
 interface ClientDashboardViewProps {
   studentRepoId: string;
-  isStaff?: boolean;
+  isOrgOwner?: boolean; // 이 repo가 속한 org의 Owner인지 (관리 화면으로 돌아가기 링크용)
   initialData: {
     repo: any;
     assignment: any;
@@ -20,7 +20,7 @@ interface ClientDashboardViewProps {
   };
 }
 
-export function ClientDashboardView({ studentRepoId, isStaff = false, initialData }: ClientDashboardViewProps) {
+export function ClientDashboardView({ studentRepoId, isOrgOwner = false, initialData }: ClientDashboardViewProps) {
   const [data, setData] = useState(initialData);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: "error" | "success" } | null>(null);
@@ -62,7 +62,7 @@ export function ClientDashboardView({ studentRepoId, isStaff = false, initialDat
       <div className="flex items-center justify-between">
         <Link
           href={
-            isStaff && data.assignment?.id
+            isOrgOwner && data.assignment?.id
               ? `/admin/assignments/${data.assignment.id}`
               : repoOrg
               ? `/dashboard?org=${encodeURIComponent(repoOrg)}`
@@ -71,7 +71,7 @@ export function ClientDashboardView({ studentRepoId, isStaff = false, initialDat
           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>{isStaff ? "뒤로가기 (과제 관리 화면)" : "뒤로가기 (내 과제 목록)"}</span>
+          <span>{isOrgOwner ? "뒤로가기 (과제 관리 화면)" : "뒤로가기 (내 과제 목록)"}</span>
         </Link>
 
         {data.assignment?.id && data.assignment?.ranking_mode !== "none" && (

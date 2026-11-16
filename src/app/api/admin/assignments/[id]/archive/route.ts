@@ -1,6 +1,5 @@
-import { requireStaff } from "@/lib/auth/guards";
+import { guardErrorStatus, requireAssignmentOwner } from "@/lib/auth/guards";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { checkIsUserOwnerOfOrg } from "@/lib/org/active-org";
 import { createAssignmentZipStream, StudentRepoArchiveItem } from "@/lib/archive/stream-zip";
 import { loadSecretRoster } from "@/lib/roster/secret-roster";
 import { parseRepoName } from "@/lib/github/repo-parser";
@@ -14,25 +13,8 @@ export async function GET(
 ) {
   try {
     const { id: assignmentId } = await params;
-    const { user, profile } = await requireStaff();
-
-    // 1. Fetch assignment
-    const { data: assignment, error: aErr } = await supabaseAdmin
-      .from("assignments")
-      .select("*")
-      .eq("id", assignmentId)
-      .single();
-
-    if (aErr || !assignment) {
-      return new Response("Assignment not found", { status: 404 });
-    }
-
-    const isOwner = await checkIsUserOwnerOfOrg(assignment.org_name, user, profile);
-    if (!isOwner) {
-      return new Response("Forbidden: Not an owner of this assignment organization", {
-        status: 403,
-      });
-    }
+    // 1. 과제 조회 + 과제 org의 Owner 확인
+    const { assignment } = await requireAssignmentOwner(assignmentId);
 
     // 2. Fetch all student repos with their evaluation and commit status
     const { data: studentRepos, error: rErr } = await supabaseAdmin
@@ -91,8 +73,9 @@ export async function GET(
       },
     });
   } catch (error: any) {
-    const status = error.message?.includes("Forbidden") ? 403 : 500;
-    return new Response(error.message || "Archive download error", { status });
+    return new Response(error.message || "Archive download error", {
+      status: guardErrorStatus(error),
+    });
   }
 }
 

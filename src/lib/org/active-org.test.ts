@@ -157,19 +157,12 @@ describe("checkIsUserOwnerOfOrg", () => {
     expect(isOwnerMember).toBe(false);
   });
 
-  it("falls back to staff role for the default organization when no metadata exists", async () => {
-    const defaultOrg = getDefaultOrgName();
-    const user = {
-      id: "user-123",
-      user_metadata: {},
-    };
+  it("계정 전체 staff role만으로는 어떤 org의 Owner로도 인정하지 않는다 (기본 org 포함)", async () => {
+    const user = { id: "user-123", user_metadata: {} };
     const profile = { role: "staff" };
 
-    const isOwner = await checkIsUserOwnerOfOrg(defaultOrg, user, profile);
-    expect(isOwner).toBe(true);
-
-    const isOtherOwner = await checkIsUserOwnerOfOrg("DifferentOrg", user, profile);
-    expect(isOtherOwner).toBe(false);
+    expect(await checkIsUserOwnerOfOrg(getDefaultOrgName(), user, profile)).toBe(false);
+    expect(await checkIsUserOwnerOfOrg("DifferentOrg", user, profile)).toBe(false);
   });
 });
 

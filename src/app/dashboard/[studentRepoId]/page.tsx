@@ -9,7 +9,7 @@ export default async function StudentDashboardDetailPage({
   params: Promise<{ studentRepoId: string }>;
 }) {
   const { studentRepoId } = await params;
-  const { repo, isStaff } = await requireStudentRepo(studentRepoId);
+  const { repo, isOrgOwner } = await requireStudentRepo(studentRepoId);
 
   // Fetch status
   const { data: status } = await supabaseAdmin
@@ -57,7 +57,7 @@ export default async function StudentDashboardDetailPage({
         assignmentTitle={repo.assignments?.title || repo.full_name}
       />
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-        <ClientDashboardView studentRepoId={studentRepoId} isStaff={isStaff} initialData={initialData} />
+        <ClientDashboardView studentRepoId={studentRepoId} isOrgOwner={isOrgOwner} initialData={initialData} />
       </main>
     </div>
   );

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireStaff } from "@/lib/auth/guards";
+import { guardErrorStatus, requireAssignmentOwner } from "@/lib/auth/guards";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export async function POST(
@@ -8,7 +8,7 @@ export async function POST(
 ) {
   try {
     const { id: assignmentId } = await params;
-    const { user } = await requireStaff();
+    const { user } = await requireAssignmentOwner(assignmentId);
 
     const body = await req.json();
     const { rules } = body;
@@ -55,7 +55,7 @@ export async function POST(
 
     return NextResponse.json({ success: true, version: newVersion });
   } catch (error: any) {
-    const status = error.message?.includes("Forbidden") ? 403 : 500;
+    const status = guardErrorStatus(error);
     return NextResponse.json({ error: error.message }, { status });
   }
 }

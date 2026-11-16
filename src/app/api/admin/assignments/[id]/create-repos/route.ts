@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireStaff } from "@/lib/auth/guards";
+import { guardErrorStatus, requireAssignmentOwner } from "@/lib/auth/guards";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { checkIsUserOwnerOfOrg } from "@/lib/org/active-org";
 import { getInstallationOctokit, normalizeOrgName } from "@/lib/github/app";
 import { loadSecretRoster } from "@/lib/roster/secret-roster";
 import {
@@ -26,38 +25,17 @@ const MAX_PER_REQUEST = 5;
 
 /**
  * 과제를 조회하고, 요청자가 그 과제 Organization의 Owner인지 확인한다.
+ * (없으면 404, Owner가 아니면 403 에러를 던진다)
  */
 async function loadOwnedAssignment(assignmentId: string) {
-  const { user, profile } = await requireStaff();
-
-  const { data: assignment } = await supabaseAdmin
-    .from("assignments")
-    .select("id, org_name, repo_prefix")
-    .eq("id", assignmentId)
-    .single();
-
-  if (!assignment) {
-    return { error: NextResponse.json({ error: "과제를 찾을 수 없습니다." }, { status: 404 }) };
-  }
-
-  const isOwner = await checkIsUserOwnerOfOrg(assignment.org_name, user, profile);
-  if (!isOwner) {
-    return {
-      error: NextResponse.json(
-        { error: "이 과제 Organization의 Owner만 repo를 생성할 수 있습니다." },
-        { status: 403 }
-      ),
-    };
-  }
-
-  return { assignment: { ...assignment, org_name: normalizeOrgName(assignment.org_name) } };
-}
-
-function errorStatus(err: any): number {
-  const msg = String(err?.message || "");
-  if (msg.includes("Unauthorized")) return 401;
-  if (msg.includes("Forbidden")) return 403;
-  return 500;
+  const { assignment } = await requireAssignmentOwner(assignmentId);
+  return {
+    assignment: {
+      id: assignment.id as string,
+      org_name: normalizeOrgName(assignment.org_name),
+      repo_prefix: (assignment.repo_prefix ?? null) as string | null,
+    },
+  };
 }
 
 /**
@@ -73,7 +51,6 @@ export async function POST(
   try {
     const { id: assignmentId } = await params;
     const loaded = await loadOwnedAssignment(assignmentId);
-    if (loaded.error) return loaded.error;
     const { assignment } = loaded;
 
     const body = await req.json().catch(() => ({}));
@@ -174,7 +151,7 @@ export async function POST(
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || "repo 생성 중 오류가 발생했습니다." },
-      { status: errorStatus(err) }
+      { status: guardErrorStatus(err) }
     );
   }
 }
