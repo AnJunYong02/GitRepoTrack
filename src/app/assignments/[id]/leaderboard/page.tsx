@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { checkIsUserOwnerOfOrg } from "@/lib/org/active-org";
 import { Trophy, Clock, CheckCircle2, AlertCircle, ArrowLeft, GitCommit, FileText, Medal } from "lucide-react";
 import Link from "next/link";
+import { BackLink } from "@/components/navigation/back-link";
 
 export default async function LeaderboardPage({
   params,
@@ -190,8 +191,8 @@ export default async function LeaderboardPage({
 
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         <div>
-          <Link
-            href={
+          <BackLink
+            fallbackHref={
               isOrgOwner
                 ? `/admin/assignments/${assignment.id}`
                 : assignment.org_name
@@ -202,7 +203,7 @@ export default async function LeaderboardPage({
           >
             <ArrowLeft className="w-4 h-4" />
             <span>{isOrgOwner ? "뒤로가기 (과제 관리 화면)" : "뒤로가기 (내 과제 목록)"}</span>
-          </Link>
+          </BackLink>
         </div>
 
         {/* Top Header Card */}

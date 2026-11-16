@@ -20,6 +20,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
+import { BackLink } from "@/components/navigation/back-link";
 
 export default async function AdminAssignmentDetailPage({
   params,
@@ -163,8 +164,8 @@ export default async function AdminAssignmentDetailPage({
 
       <main className="mx-auto max-w-7xl px-4 py-8 space-y-6">
         <div>
-          <Link
-            href={
+          <BackLink
+            fallbackHref={
               assignment.org_name
                 ? `/admin?org=${encodeURIComponent(assignment.org_name)}`
                 : "/admin"
@@ -173,7 +174,7 @@ export default async function AdminAssignmentDetailPage({
           >
             <ArrowLeft className="w-4 h-4" />
             <span>뒤로가기 (과제 관리 목록)</span>
-          </Link>
+          </BackLink>
         </div>
 
         {/* Top Header & Actions */}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { BackLink } from "@/components/navigation/back-link";
 import { RefreshCw, Play, Clock, AlertCircle, GitBranch, ArrowLeft, ExternalLink, Trophy } from "lucide-react";
 import { ReadmeChecklist } from "@/components/student/readme-checklist";
 import { CommitChart } from "@/components/student/commit-chart";
@@ -60,8 +61,8 @@ export function ClientDashboardView({ studentRepoId, isOrgOwner = false, initial
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <Link
-          href={
+        <BackLink
+          fallbackHref={
             isOrgOwner && data.assignment?.id
               ? `/admin/assignments/${data.assignment.id}`
               : repoOrg
@@ -72,7 +73,7 @@ export function ClientDashboardView({ studentRepoId, isOrgOwner = false, initial
         >
           <ArrowLeft className="w-4 h-4" />
           <span>{isOrgOwner ? "뒤로가기 (과제 관리 화면)" : "뒤로가기 (내 과제 목록)"}</span>
-        </Link>
+        </BackLink>
 
         {data.assignment?.id && data.assignment?.ranking_mode !== "none" && (
           <Link
