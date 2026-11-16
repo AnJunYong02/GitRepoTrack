@@ -13,6 +13,7 @@ import { OrganizationSwitcher } from "@/components/org-switcher";
 import { OrgSelectorView } from "@/components/org-selector-view";
 import { StudentNoBanner } from "@/components/student/student-no-banner";
 import { StudentRepoList, StudentRepoItemData } from "@/components/student/student-repo-list";
+import { StudentFocusDashboard } from "@/components/student/student-summary";
 import { ArrowRight, Shield } from "lucide-react";
 
 const SELECT_STUDENT_REPOS = `
@@ -254,6 +255,7 @@ export default async function DashboardPage({
       assignmentTitle: assignment?.title || "과제",
       rankingMode: assignment?.ranking_mode === "none" ? "none" : "live",
       deadlineFormatted: deadline ? deadline.toLocaleString("ko-KR") : null,
+      deadlineAt: assignment?.deadline_at ?? null,
       hasSnapshot,
       hasPushed,
       isSubmitted,
@@ -267,6 +269,7 @@ export default async function DashboardPage({
       totalKeywords,
       passedKeywordsCount,
       missingKeywordsCount,
+      missingKeywords: readmeDetails.filter((d) => !d.found).map((d) => d.keyword),
       isReadmeSatisfied,
       isStale: Boolean(status?.stale),
     };
@@ -324,7 +327,15 @@ export default async function DashboardPage({
         />
 
         {repoItems.length > 0 ? (
-          <StudentRepoList items={repoItems} />
+          <>
+            {/* 이번주 과제(최신) 통계 + 직전 과제 1개 */}
+            <StudentFocusDashboard
+              current={repoItems[0]}
+              previous={repoItems[1] ?? null}
+              nowMs={nowMs}
+            />
+            <StudentRepoList items={repoItems} />
+          </>
         ) : (
           <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-800 p-12 text-center text-slate-500">
             <p className="text-sm font-medium text-slate-700 dark:text-slate-300">

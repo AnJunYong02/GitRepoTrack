@@ -25,6 +25,7 @@ export interface StudentRepoItemData {
   assignmentTitle: string;
   rankingMode: "live" | "none";
   deadlineFormatted: string | null;
+  deadlineAt: string | null; // ISO 원본 (요약 패널의 다음 마감 계산용)
   hasSnapshot: boolean;
   hasPushed: boolean;
   isSubmitted: boolean;
@@ -38,6 +39,7 @@ export interface StudentRepoItemData {
   totalKeywords: number;
   passedKeywordsCount: number;
   missingKeywordsCount: number;
+  missingKeywords: string[]; // 부족한 README 키워드 이름 (대시보드 표시용)
   isReadmeSatisfied: boolean;
   isStale: boolean;
 }
