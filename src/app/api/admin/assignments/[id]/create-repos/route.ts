@@ -17,6 +17,8 @@ import {
 } from "@/lib/github/create-student-repos";
 import type { OrgRepoSummary } from "@/lib/github/previous-repo-login";
 import { listOrgRepos } from "@/lib/github/provision-preview";
+import { safeRevalidateTag } from "@/lib/cache/shared-cache";
+import { orgReposTag } from "@/lib/cache/cache-keys";
 
 export const runtime = "nodejs";
 // Vercel 함수 실행 시간 제한 대비: 요청당 최대 MAX_PER_REQUEST명만 처리하고 클라이언트가 나눠 호출한다
@@ -145,6 +147,11 @@ export async function POST(
             ).resolved,
         })
       );
+    }
+
+    // 새 repo를 만들었으면 org repo 목록 공유 캐시를 무효화 (다음 조회 때 GitHub에서 다시 가져옴)
+    if (results.some((r: any) => r.created)) {
+      safeRevalidateTag(orgReposTag(assignment.org_name));
     }
 
     return NextResponse.json({ results });

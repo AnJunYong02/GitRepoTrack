@@ -19,6 +19,7 @@ import {
 } from "@/components/admin/admin-assignment-list";
 import { Shield, ShieldAlert, ArrowLeft, RefreshCw } from "lucide-react";
 import { CreateStudentReposPanel } from "@/components/admin/create-student-repos-panel";
+import { escapeLikePattern } from "@/lib/cache/cache-keys";
 
 export default async function AdminAssignmentsPage({
   searchParams,
@@ -161,12 +162,12 @@ export default async function AdminAssignmentsPage({
         )
       )
     `)
+    // 현재 org 과제만 DB에서 조회 (다른 org 과제·학생 repo까지 읽지 않도록)
+    .ilike("org_name", escapeLikePattern(activeOrg))
     .order("created_at", { ascending: false });
 
-  // Filter assignments by activeOrg (case-insensitive) and sort newest category first
-  const orgFilteredAssignments = (assignments || []).filter(
-    (a: any) => (a.org_name || "").toLowerCase() === activeOrg.toLowerCase()
-  );
+  // 최신 과제 카테고리 순으로 정렬
+  const orgFilteredAssignments = assignments || [];
 
   const sortedAssignments = [...orgFilteredAssignments].sort((a: any, b: any) => {
     const keyA = normalizeCategoryKey(a.title || "");
