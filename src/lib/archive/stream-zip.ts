@@ -68,7 +68,9 @@ export function toFolderEntryPath(
 
 export function createAssignmentZipStream(
   assignmentTitle: string,
-  items: StudentRepoArchiveItem[]
+  items: StudentRepoArchiveItem[],
+  // includeManifest: 관리자 일괄 다운로드는 manifest.csv 포함(기본), 학생 본인 다운로드는 제외
+  { includeManifest = true }: { includeManifest?: boolean } = {}
 ): { stream: Readable; run: () => Promise<void> } {
   const passthrough = new PassThrough();
   const archive = archiver("zip", {
@@ -117,6 +119,12 @@ export function createAssignmentZipStream(
           );
         } catch (err: any) {
           console.warn(`Could not archive ${item.fullName}:`, err.message);
+          // manifest가 없으면 실패 사실을 알 수 없으므로 안내 파일을 남긴다 (빈 zip 방지)
+          if (!includeManifest) {
+            archive.append(`${item.fullName} 다운로드 실패: ${err.message}\n`, {
+              name: `${folderName}/DOWNLOAD_FAILED.txt`,
+            });
+          }
           manifestRows.push(
             `"${safeStudentNo}","${safeName}","${item.githubLogin}","${item.fullName}","${item.branch}","${item.isSubmitted ? "제출 완료" : "미완료"}","${item.commitSha || ""}","다운로드 실패: ${err.message}"`
           );
@@ -124,7 +132,9 @@ export function createAssignmentZipStream(
       }
 
       // Append manifest.csv
-      archive.append(manifestRows.join("\n"), { name: "manifest.csv" });
+      if (includeManifest) {
+        archive.append(manifestRows.join("\n"), { name: "manifest.csv" });
+      }
 
       await archive.finalize();
     } catch (error) {
