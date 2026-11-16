@@ -206,7 +206,7 @@ export default async function AdminAssignmentDetailPage({
                 download
               >
                 <Download className="w-4 h-4" />
-                <span>전체 Repo ZIP 일괄 다운로드 (.zip)</span>
+                <span>Repo 다운로드 (.zip)</span>
               </a>
             </div>
           </div>
