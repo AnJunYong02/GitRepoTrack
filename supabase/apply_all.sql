@@ -375,3 +375,9 @@ begin
     where id = v_assignment_id;
   end if;
 end $$;
+
+-- 0004_reset_staff_role.sql: 계정 전체 staff 권한 제거 (권한은 org별 Owner 여부로만 판단)
+update public.profiles
+set role = 'student',
+    updated_at = now()
+where role = 'staff';
