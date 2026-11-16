@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { BackLink } from "@/components/navigation/back-link";
-import { RefreshCw, Play, Clock, AlertCircle, GitBranch, ArrowLeft, ExternalLink, Trophy } from "lucide-react";
+import { RefreshCw, Play, Clock, AlertCircle, GitBranch, ArrowLeft, ExternalLink, Trophy, Download } from "lucide-react";
 import { ReadmeChecklist } from "@/components/student/readme-checklist";
 import { CommitChart } from "@/components/student/commit-chart";
 import { CommitTimeline } from "@/components/student/commit-timeline";
@@ -121,6 +121,15 @@ export function ClientDashboardView({ studentRepoId, isOrgOwner = false, initial
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
               <span>GitHub 새로고침</span>
             </button>
+            {/* 본인 Repo ZIP 다운로드 (관리자 과제 상세와 같은 스타일) */}
+            <a
+              href={`/api/repos/${studentRepoId}/archive`}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-indigo-500"
+              download
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Repo 다운로드 (.zip)</span>
+            </a>
           </div>
         </div>
 
