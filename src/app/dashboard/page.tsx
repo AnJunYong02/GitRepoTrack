@@ -313,7 +313,7 @@ export default async function DashboardPage({
           activeOrg={activeOrg}
           organizations={organizations}
           basePath="/dashboard"
-          role={isOwnerOfActiveOrg ? "staff" : "student"}
+          isOwner={isOwnerOfActiveOrg}
         />
 
         {/* Student Number Binding & Org Repo Sync Banner */}

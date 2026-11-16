@@ -1,6 +1,7 @@
 import { Navbar } from "@/components/navbar";
 import { requireUser } from "@/lib/auth/guards";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { checkIsUserOwnerOfOrg } from "@/lib/org/active-org";
 import { Trophy, Clock, CheckCircle2, AlertCircle, ArrowLeft, GitCommit, FileText, Medal } from "lucide-react";
 import Link from "next/link";
 
@@ -11,7 +12,6 @@ export default async function LeaderboardPage({
 }) {
   const { id: assignmentId } = await params;
   const current = await requireUser();
-  const isStaff = current?.profile?.role === "staff";
 
   // Fetch assignment with its criteria rules (including minCommits and readmeKeywords)
   const { data: assignment } = await supabaseAdmin
@@ -32,7 +32,14 @@ export default async function LeaderboardPage({
     );
   }
 
-  if (assignment.ranking_mode === "none" && !isStaff) {
+  // 이 과제가 속한 org의 Owner인지 (org마다 권한이 다름)
+  const isOrgOwner = await checkIsUserOwnerOfOrg(
+    assignment.org_name || "",
+    current.user,
+    current.profile
+  );
+
+  if (assignment.ranking_mode === "none" && !isOrgOwner) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
         <Navbar />
@@ -172,7 +179,7 @@ export default async function LeaderboardPage({
         orgName={assignment.org_name}
         assignmentTitle={assignment.title}
         assignmentHref={
-          isStaff
+          isOrgOwner
             ? `/admin/assignments/${assignment.id}`
             : assignment.org_name
             ? `/dashboard?org=${encodeURIComponent(assignment.org_name)}`
@@ -185,7 +192,7 @@ export default async function LeaderboardPage({
         <div>
           <Link
             href={
-              isStaff
+              isOrgOwner
                 ? `/admin/assignments/${assignment.id}`
                 : assignment.org_name
                 ? `/dashboard?org=${encodeURIComponent(assignment.org_name)}`
@@ -194,7 +201,7 @@ export default async function LeaderboardPage({
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>{isStaff ? "뒤로가기 (과제 관리 화면)" : "뒤로가기 (내 과제 목록)"}</span>
+            <span>{isOrgOwner ? "뒤로가기 (과제 관리 화면)" : "뒤로가기 (내 과제 목록)"}</span>
           </Link>
         </div>
 

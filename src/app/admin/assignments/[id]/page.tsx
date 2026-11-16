@@ -29,7 +29,8 @@ export default async function AdminAssignmentDetailPage({
   const { id: assignmentId } = await params;
   const current = await getCurrentUser();
 
-  if (!current || current.profile?.role !== "staff") {
+  // 로그인만 먼저 확인하고, 권한은 아래에서 과제 org의 Owner인지로 판단한다
+  if (!current) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
         <Navbar />
@@ -37,8 +38,8 @@ export default async function AdminAssignmentDetailPage({
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-950 text-amber-600">
             <ShieldAlert className="w-6 h-6" />
           </div>
-          <h1 className="text-xl font-bold">관리자(Staff) 권한이 필요합니다</h1>
-          <p className="text-xs text-slate-500">과제 상세 관리 및 ZIP 다운로드는 관리자만 접근할 수 있습니다.</p>
+          <h1 className="text-xl font-bold">로그인이 필요합니다</h1>
+          <p className="text-xs text-slate-500">과제 상세 관리는 해당 Organization의 Owner만 접근할 수 있습니다.</p>
           <div className="flex justify-center gap-3 pt-2">
             <Link
               href="/dashboard"

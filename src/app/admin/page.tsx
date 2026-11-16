@@ -84,7 +84,7 @@ export default async function AdminAssignmentsPage({
             activeOrg={activeOrg}
             organizations={organizations}
             basePath="/admin"
-            role="student"
+            isOwner={false}
           />
 
           <div className="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-white dark:bg-slate-900 p-8 shadow-sm space-y-5 text-center">
@@ -109,10 +109,6 @@ export default async function AdminAssignmentsPage({
               <div className="flex justify-between">
                 <span className="text-slate-500">선택된 Organization:</span>
                 <span className="font-semibold text-indigo-600 dark:text-indigo-400">{activeOrg}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">해당 조직 내 역할:</span>
-                <span className="font-semibold text-amber-600">학생 / 일반 멤버 (student)</span>
               </div>
             </div>
 
@@ -217,9 +213,6 @@ export default async function AdminAssignmentsPage({
               <span>교수 및 TA 전용 관리자</span>
             </div>
             <h1 className="text-2xl font-bold mt-2">과제 관리 및 제출 현황</h1>
-            <p className="text-xs text-slate-500">
-              담당 과제의 학생 제출 현황을 확인하고, README 키워드 기준을 설정하며, 단일 ZIP 일괄 다운로드를 수행합니다.
-            </p>
           </div>
 
           <CreateStudentReposPanel orgName={activeOrg} />
@@ -230,7 +223,7 @@ export default async function AdminAssignmentsPage({
           activeOrg={activeOrg}
           organizations={organizations}
           basePath="/admin"
-          role="staff"
+          isOwner
         />
 
         {/* Unified Repo Search Bar & Assignments List */}

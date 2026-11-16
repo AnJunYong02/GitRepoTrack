@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   Building2,
   Shield,
-  GraduationCap,
   ArrowRight,
   ExternalLink,
   Loader2,
@@ -52,16 +51,13 @@ function OrgAvatar({ org, size }: { org: OrganizationOption; size: "sm" | "lg" }
   );
 }
 
+// Owner인 org에만 배지를 표시하고, 아니면 아무 표시도 하지 않는다
 function RoleBadge({ isOwner }: { isOwner: boolean }) {
-  return isOwner ? (
+  if (!isOwner) return null;
+  return (
     <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950/80 px-2.5 py-0.5 text-[11px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-500/20">
       <Shield className="w-3 h-3" />
       <span>Owner (관리자)</span>
-    </span>
-  ) : (
-    <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 dark:bg-blue-950/80 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700 dark:text-blue-300 ring-1 ring-blue-500/20">
-      <GraduationCap className="w-3 h-3" />
-      <span>학생 (Member)</span>
     </span>
   );
 }
@@ -477,11 +473,6 @@ export function OrgSelectorView({
                   </div>
 
                   <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
-                      {org.isOwner
-                        ? "관리자 과제 관리 대시보드가 열립니다"
-                        : "내 과제 제출 현황 대시보드가 열립니다"}
-                    </span>
                     <button
                       type="button"
                       disabled={isBusy}

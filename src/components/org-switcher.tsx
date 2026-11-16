@@ -10,7 +10,6 @@ import {
   ExternalLink,
   Loader2,
   Shield,
-  GraduationCap,
   LayoutGrid,
   AlertCircle,
   Search,
@@ -23,14 +22,15 @@ interface OrganizationSwitcherProps {
   activeOrg: string;
   organizations: OrganizationOption[];
   basePath: "/dashboard" | "/admin";
-  role?: "student" | "staff";
+  /** 현재 org의 Owner인지 (서버에서 org별로 판단한 값) */
+  isOwner?: boolean;
 }
 
 export function OrganizationSwitcher({
   activeOrg,
   organizations: initialOrganizations,
   basePath,
-  role = "student",
+  isOwner = false,
 }: OrganizationSwitcherProps) {
   const router = useRouter();
   const [organizations, setOrganizations] =
@@ -49,7 +49,7 @@ export function OrganizationSwitcher({
   const currentOrgObj = organizations.find(
     (o) => o.name.toLowerCase() === activeOrg.toLowerCase()
   );
-  const isCurrentOrgOwner = currentOrgObj?.isOwner ?? role === "staff";
+  const isCurrentOrgOwner = currentOrgObj?.isOwner ?? isOwner;
 
   // Close dropdown when clicking outside or pressing Escape
   useEffect(() => {
@@ -87,7 +87,6 @@ export function OrganizationSwitcher({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orgName: cleanName,
-          registerAsOwner: isOwnerHint || role === "staff",
         }),
       });
       const data = await res.json();
@@ -170,15 +169,11 @@ export function OrganizationSwitcher({
               <span className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 px-2.5 py-0.5 text-xs font-bold text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-600/20">
                 <span>{activeOrg}</span>
               </span>
-              {isCurrentOrgOwner ? (
+              {/* Owner일 때만 표시하고, 아니면 역할 표시를 하지 않는다 */}
+              {isCurrentOrgOwner && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950/70 px-2 py-0.5 text-[11px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-500/20">
                   <Shield className="w-3 h-3" />
                   <span>Owner (관리자)</span>
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 dark:bg-blue-950/70 px-2 py-0.5 text-[11px] font-semibold text-blue-700 dark:text-blue-300 ring-1 ring-blue-500/20">
-                  <GraduationCap className="w-3 h-3" />
-                  <span>학생 (Member)</span>
                 </span>
               )}
               <a
@@ -280,7 +275,7 @@ export function OrganizationSwitcher({
                 {canConnectNewSlug && (
                   <button
                     type="button"
-                    onClick={() => handleSelectOrg(trimmedQuery, role === "staff")}
+                    onClick={() => handleSelectOrg(trimmedQuery)}
                     disabled={Boolean(switchingTo)}
                     className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 py-1.5 px-3 text-xs font-semibold text-white hover:bg-indigo-500 transition"
                   >
@@ -338,19 +333,14 @@ export function OrganizationSwitcher({
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            {org.isOwner ? (
+                          {org.isOwner && (
+                            <div className="flex items-center gap-1.5 mt-0.5">
                               <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
                                 <Shield className="w-2.5 h-2.5" />
                                 <span>Owner · 관리자 대시보드</span>
                               </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400">
-                                <GraduationCap className="w-2.5 h-2.5" />
-                                <span>학생 · 내 과제 대시보드</span>
-                              </span>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </div>
                       </div>
 

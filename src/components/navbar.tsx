@@ -2,7 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { getCurrentUser } from "@/lib/auth/guards";
 import { normalizeOrgName } from "@/lib/github/app";
-import { ACTIVE_ORG_COOKIE, isValidOrgSlug } from "@/lib/org/active-org";
+import { ACTIVE_ORG_COOKIE, checkIsUserOwnerOfOrg, isValidOrgSlug } from "@/lib/org/active-org";
 import { GitBranch, LogOut, User, Building2 } from "lucide-react";
 
 export interface NavbarProps {
@@ -19,16 +19,20 @@ export async function Navbar({
   subPageLabel,
 }: NavbarProps = {}) {
   const current = await getCurrentUser();
-  const isStaff = current?.profile?.role === "staff";
   const cookieStore = await cookies();
   const rawCookieOrg = normalizeOrgName(
     cookieStore.get(ACTIVE_ORG_COOKIE)?.value || ""
   );
   const resolvedOrg = normalizeOrgName(orgName || "") || (isValidOrgSlug(rawCookieOrg) ? rawCookieOrg : "");
   const showOrgPath = Boolean(orgName && isValidOrgSlug(normalizeOrgName(orgName)));
+  // 현재 org의 Owner인지 (권한은 org마다 다르므로 계정 전체 role을 쓰지 않는다)
+  const isOrgOwner =
+    current && resolvedOrg
+      ? await checkIsUserOwnerOfOrg(resolvedOrg, current.user, current.profile)
+      : false;
 
   const orgRootHref = resolvedOrg
-    ? isStaff
+    ? isOrgOwner
       ? `/admin?org=${encodeURIComponent(resolvedOrg)}`
       : `/dashboard?org=${encodeURIComponent(resolvedOrg)}`
     : "/dashboard";
@@ -140,9 +144,12 @@ export async function Navbar({
                 <span className="font-medium hidden sm:inline">
                   {current.profile?.github_login}
                 </span>
-                {isStaff && (
-                  <span className="rounded bg-indigo-100 dark:bg-indigo-950 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700 dark:text-indigo-300">
-                    STAFF
+                {isOrgOwner && (
+                  <span
+                    className="rounded bg-indigo-100 dark:bg-indigo-950 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700 dark:text-indigo-300"
+                    title={`${resolvedOrg} Organization의 Owner`}
+                  >
+                    OWNER
                   </span>
                 )}
               </div>
