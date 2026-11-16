@@ -87,18 +87,11 @@ export function StudentNoBanner({
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold text-slate-500">연동된 내 학번</span>
+                <span className="text-xs font-semibold text-slate-500">내 학번</span>
                 <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 dark:bg-blue-950/80 px-2 py-0.5 text-sm font-bold text-blue-700 dark:text-blue-300 ring-1 ring-blue-600/20">
-                  <Lock className="w-3 h-3" />
                   <span>{linkedStudentNo}</span>
                 </span>
-                <span className="text-xs text-slate-400">
-                  ({activeOrg} 내 {repoCount}개 과제 Repo 매칭됨)
-                </span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                <strong className="font-semibold text-slate-700 dark:text-slate-300">{activeOrg}</strong> Organization 내 <code className="font-mono text-slate-700 dark:text-slate-300">*-{linkedStudentNo}</code> 형식의 본인 과제 저장소만 안전하게 표시됩니다.
-              </p>
             </div>
           </div>
 

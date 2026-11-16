@@ -187,9 +187,6 @@ export function OrganizationSwitcher({
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-              우측 토글에서 내 계정과 연결된 Organization을 검색하거나 새로운 Organization을 등록해 이동할 수 있습니다.
-            </p>
           </div>
         </div>
 

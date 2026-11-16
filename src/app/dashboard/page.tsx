@@ -306,9 +306,6 @@ export default async function DashboardPage({
 
         <div>
           <h1 className="text-2xl font-bold tracking-tight">내 과제 목록</h1>
-          <p className="text-sm text-slate-500">
-            학번(예: 22300XXX)과 일치하는 GitHub Organization 과제 저장소와 현재 제출 및 검사 상태를 확인합니다.
-          </p>
         </div>
 
         {/* Multi-Organization Toggle Switcher */}
