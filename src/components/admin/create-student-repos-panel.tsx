@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { invalidateOrgReposSessionCache } from "@/lib/cache/session-cache";
 import {
   AlertCircle,
   ArrowRight,
@@ -174,7 +175,11 @@ export function CreateStudentReposPanel({ orgName }: { orgName: string }) {
   const close = () => {
     if (running) return;
     setIsOpen(false);
-    if (doneCount > 0) router.refresh(); // 과제 목록 인원 수 갱신
+    if (doneCount > 0) {
+      // 새 repo가 생겼으므로 org repo 목록 브라우저 캐시를 지우고 목록 컴포넌트에 재조회를 알린다
+      invalidateOrgReposSessionCache(orgName);
+      router.refresh(); // 과제 목록 인원 수 갱신
+    }
   };
 
   const loadPreview = async () => {

@@ -4,6 +4,15 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
+  getSessionStorage,
+  isFresh,
+  ORG_REPOS_INVALIDATED_EVENT,
+  ORG_REPOS_SESSION_TTL_MS,
+  orgReposSessionKey,
+  readSessionCache,
+  writeSessionCache,
+} from "@/lib/cache/session-cache";
+import {
   ArrowRight,
   Users,
   Trophy,
@@ -58,6 +67,13 @@ interface AdminAssignmentListProps {
 
 const STORAGE_KEY = "repotrack-admin-layout";
 
+/** sessionStorage에 저장하는 org repo 조회 결과 */
+interface OrgReposCacheData {
+  orgName: string;
+  totalRepos: number;
+  categories: CategoryData[];
+}
+
 export function AdminAssignmentList({
   items,
   activeOrg = "2026-2-WebService",
@@ -65,7 +81,9 @@ export function AdminAssignmentList({
   const router = useRouter();
   const [layout, setLayout] = useState<"grid" | "list">("list");
   const [searchQuery, setSearchQuery] = useState("");
-  const [loadingOrg, setLoadingOrg] = useState(true);
+  // loadingOrg: 캐시가 없어 처음 불러오는 중 (진행 표시) / revalidating: 캐시를 보여준 채 뒤에서 갱신 중
+  const [loadingOrg, setLoadingOrg] = useState(false);
+  const [revalidating, setRevalidating] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [orgName, setOrgName] = useState(activeOrg);
   const [totalRepos, setTotalRepos] = useState(0);
@@ -95,10 +113,29 @@ export function AdminAssignmentList({
     return () => clearInterval(timer);
   }, [loadingOrg]);
 
-  const fetchOrgRepos = async (targetOrg = activeOrg, forceRefresh = false) => {
-    setLoadingOrg(true);
-    setErrorMsg("");
-    setOrgName(targetOrg);
+  // org repo 조회 결과를 화면 상태에 반영
+  const applyOrgReposData = (data: OrgReposCacheData, targetOrg: string) => {
+    setOrgName(data.orgName || targetOrg);
+    setTotalRepos(data.totalRepos || 0);
+    setCategories(data.categories || []);
+  };
+
+  /**
+   * org repo 목록을 서버에서 조회한다.
+   * background=true면 화면의 기존 목록을 유지한 채 뒤에서 갱신한다(로딩 표시 없음).
+   */
+  const fetchOrgRepos = async (
+    targetOrg = activeOrg,
+    forceRefresh = false,
+    background = false
+  ) => {
+    if (background) {
+      setRevalidating(true);
+    } else {
+      setLoadingOrg(true);
+      setErrorMsg("");
+      setOrgName(targetOrg);
+    }
     try {
       const refreshParam = forceRefresh ? "&refresh=1" : "";
       const res = await fetch(
@@ -106,23 +143,54 @@ export function AdminAssignmentList({
       );
       const data = await res.json();
       if (!res.ok) {
-        setCategories([]);
-        setTotalRepos(0);
+        if (!background) {
+          setCategories([]);
+          setTotalRepos(0);
+        }
         throw new Error(data.error || "조직 저장소 목록 조회 실패");
       }
-      setOrgName(data.orgName || targetOrg);
-      setTotalRepos(data.totalRepos || 0);
-      setCategories(data.categories || []);
+      const cacheData: OrgReposCacheData = {
+        orgName: data.orgName || targetOrg,
+        totalRepos: data.totalRepos || 0,
+        categories: data.categories || [],
+      };
+      applyOrgReposData(cacheData, targetOrg);
+      writeSessionCache(getSessionStorage(), orgReposSessionKey(targetOrg), cacheData);
     } catch (err: any) {
       setErrorMsg(err.message || "조직 저장소 조회 중 오류가 발생했습니다.");
     } finally {
-      setLoadingOrg(false);
+      if (background) setRevalidating(false);
+      else setLoadingOrg(false);
     }
   };
 
+  // 진입 시: 같은 탭에서 불러온 목록이 있으면 즉시 보여주고(로딩 없음), 3분이 지났으면 뒤에서 갱신
   useEffect(() => {
     setSuccessMsg("");
-    fetchOrgRepos(activeOrg, false);
+    const cached = readSessionCache<OrgReposCacheData>(
+      getSessionStorage(),
+      orgReposSessionKey(activeOrg)
+    );
+    if (cached) {
+      applyOrgReposData(cached.data, activeOrg);
+      if (!isFresh(cached, ORG_REPOS_SESSION_TTL_MS)) {
+        fetchOrgRepos(activeOrg, false, true);
+      }
+    } else {
+      fetchOrgRepos(activeOrg, false);
+    }
+  }, [activeOrg]);
+
+  // 학생 repo 일괄 생성 등으로 org repo가 바뀌었다는 알림을 받으면 뒤에서 다시 조회
+  useEffect(() => {
+    const onInvalidated = (event: Event) => {
+      const changedOrg = (event as CustomEvent<{ orgName?: string }>).detail?.orgName || "";
+      if (changedOrg.toLowerCase() === activeOrg.toLowerCase()) {
+        fetchOrgRepos(activeOrg, false, true);
+      }
+    };
+    window.addEventListener(ORG_REPOS_INVALIDATED_EVENT, onInvalidated);
+    return () => window.removeEventListener(ORG_REPOS_INVALIDATED_EVENT, onInvalidated);
   }, [activeOrg]);
 
   const handleLayoutChange = (nextLayout: "grid" | "list") => {
@@ -158,7 +226,8 @@ export function AdminAssignmentList({
       setSuccessMsg(
         `🎉 ${overrideTitle || catData.label} 저장소 ${data.importedCount}개가 동기화되었습니다!`
       );
-      await fetchOrgRepos(activeOrg, false);
+      // 등록 결과(기존 과제 연결)를 반영: 목록은 유지한 채 뒤에서 갱신
+      await fetchOrgRepos(activeOrg, false, true);
       router.refresh();
     } catch (err: any) {
       setErrorMsg(err.message || "과제 동기화 중 오류가 발생했습니다.");
@@ -285,7 +354,7 @@ export function AdminAssignmentList({
           >
             <RefreshCw
               className={`w-3.5 h-3.5 ${
-                loadingOrg ? "animate-spin text-indigo-600" : ""
+                loadingOrg || revalidating ? "animate-spin text-indigo-600" : ""
               }`}
             />
             <span>
