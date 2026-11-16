@@ -1,3 +1,4 @@
+import { cachedCall, safeRevalidateTag } from "@/lib/cache/shared-cache";
 import { Octokit } from "@octokit/rest";
 import { createAppAuth } from "@octokit/auth-app";
 
@@ -94,13 +95,36 @@ export function getAppOctokit(): Octokit {
   return appOctokitInstance;
 }
 
-let installedOrgsCache: {
-  data: InstalledOrgInfo[];
-  expiresAt: number;
-} | null = null;
+// GitHub 조회 결과 캐시 시간 (Vercel Data Cache: 인스턴스끼리 공유)
+const GITHUB_LOOKUP_TTL_SECONDS = 5 * 60; // 5분
+export const INSTALLED_ORGS_TAG = "github:installed-orgs";
 
-const INSTALLED_ORGS_TTL_MS = 5 * 60 * 1000; // 5 minutes
+/** GitHub App이 설치된 org 목록을 GitHub에서 직접 조회한다 (캐시 없음) */
+async function fetchInstalledOrganizations(): Promise<InstalledOrgInfo[]> {
+  const app = getAppOctokit();
+  const { data: installations } = await app.rest.apps.listInstallations({
+    per_page: 100,
+  });
 
+  const result: InstalledOrgInfo[] = [];
+  for (const inst of installations) {
+    const account: any = inst.account;
+    if (account?.login) {
+      result.push({
+        login: account.login,
+        avatarUrl: account.avatar_url,
+        htmlUrl: account.html_url || `https://github.com/${account.login}`,
+        accountType: account.type || "Organization",
+      });
+    }
+  }
+  return result;
+}
+
+/**
+ * GitHub App이 설치된 org 목록 (5분 공유 캐시).
+ * forceRefresh면 캐시를 무효화하고 GitHub에서 바로 조회한다.
+ */
 export async function listInstalledOrganizations(
   forceRefresh = false
 ): Promise<InstalledOrgInfo[]> {
@@ -110,40 +134,19 @@ export async function listInstalledOrganizations(
     return [];
   }
 
-  if (
-    !forceRefresh &&
-    installedOrgsCache &&
-    Date.now() < installedOrgsCache.expiresAt
-  ) {
-    return installedOrgsCache.data;
-  }
-
   try {
-    const app = getAppOctokit();
-    const { data: installations } = await app.rest.apps.listInstallations({
-      per_page: 100,
-    });
-
-    const result: InstalledOrgInfo[] = [];
-    for (const inst of installations) {
-      const account: any = inst.account;
-      if (account?.login) {
-        result.push({
-          login: account.login,
-          avatarUrl: account.avatar_url,
-          htmlUrl: account.html_url || `https://github.com/${account.login}`,
-          accountType: account.type || "Organization",
-        });
-      }
+    if (forceRefresh) {
+      safeRevalidateTag(INSTALLED_ORGS_TAG);
+      return await fetchInstalledOrganizations();
     }
-    installedOrgsCache = {
-      data: result,
-      expiresAt: Date.now() + INSTALLED_ORGS_TTL_MS,
-    };
-    return result;
+    return await cachedCall(
+      ["github-installed-orgs"],
+      { revalidate: GITHUB_LOOKUP_TTL_SECONDS, tags: [INSTALLED_ORGS_TAG] },
+      fetchInstalledOrganizations
+    );
   } catch (err: any) {
     console.warn("[listInstalledOrganizations] Could not fetch installations:", err.message);
-    return installedOrgsCache?.data || [];
+    return [];
   }
 }
 
@@ -219,19 +222,37 @@ export async function checkIsOrgOwnerWithUserToken(
   }
 }
 
-const userOrgRoleCache = new Map<
-  string,
-  { role: "admin" | "member" | null; expiresAt: number }
->();
-const USER_ORG_ROLE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+/** 사용자의 공개 org 캐시 태그 */
+export function publicOrgsTag(username: string): string {
+  return `github:public-orgs:${username.trim().toLowerCase()}`;
+}
 
-const userPublicOrgsCache = new Map<
-  string,
-  { data: UserOrgMembership[]; expiresAt: number }
->();
+/** 사용자의 org 역할 캐시 태그 */
+export function orgRoleTag(username: string, orgName: string): string {
+  return `github:org-role:${username.trim().toLowerCase()}:${orgName.trim().toLowerCase()}`;
+}
+
+/** 사용자의 공개 org 목록을 GitHub에서 직접 조회한다 (캐시 없음) */
+async function fetchPublicOrgsForUser(username: string): Promise<UserOrgMembership[]> {
+  const octokit = new Octokit();
+  const { data: orgs } = await octokit.rest.orgs.listForUser({
+    username,
+    per_page: 100,
+  });
+
+  return orgs
+    .filter((o) => Boolean(o.login))
+    .map((o) => ({
+      login: o.login,
+      avatarUrl: o.avatar_url,
+      htmlUrl: `https://github.com/${o.login}`,
+      description: o.description || undefined,
+      role: "member" as const,
+    }));
+}
 
 /**
- * Lists public GitHub Organizations for a given username (cached for 5 minutes).
+ * Lists public GitHub Organizations for a given username (5분 공유 캐시).
  * Helpful when OAuth token is no longer in session or user joined a new public org.
  */
 export async function listPublicOrgsForUser(
@@ -241,37 +262,19 @@ export async function listPublicOrgsForUser(
   const cleanUser = username?.trim();
   if (!cleanUser) return [];
 
-  const cacheKey = cleanUser.toLowerCase();
-  const cached = userPublicOrgsCache.get(cacheKey);
-  if (!forceRefresh && cached && Date.now() < cached.expiresAt) {
-    return cached.data;
-  }
-
   try {
-    const octokit = new Octokit();
-    const { data: orgs } = await octokit.rest.orgs.listForUser({
-      username: cleanUser,
-      per_page: 100,
-    });
-
-    const result: UserOrgMembership[] = orgs
-      .filter((o) => Boolean(o.login))
-      .map((o) => ({
-        login: o.login,
-        avatarUrl: o.avatar_url,
-        htmlUrl: `https://github.com/${o.login}`,
-        description: o.description || undefined,
-        role: "member" as const,
-      }));
-
-    userPublicOrgsCache.set(cacheKey, {
-      data: result,
-      expiresAt: Date.now() + USER_ORG_ROLE_TTL_MS,
-    });
-    return result;
+    if (forceRefresh) {
+      safeRevalidateTag(publicOrgsTag(cleanUser));
+      return await fetchPublicOrgsForUser(cleanUser);
+    }
+    return await cachedCall(
+      ["github-public-orgs", cleanUser.toLowerCase()],
+      { revalidate: GITHUB_LOOKUP_TTL_SECONDS, tags: [publicOrgsTag(cleanUser)] },
+      () => fetchPublicOrgsForUser(cleanUser)
+    );
   } catch (err: any) {
     console.warn("[listPublicOrgsForUser] Could not list public orgs:", err.message);
-    return cached?.data || [];
+    return [];
   }
 }
 
@@ -355,38 +358,30 @@ export async function checkUserOrgRole(
   const targetOrg = normalizeOrgName(orgName || process.env.GITHUB_ORG_NAME);
   if (!targetOrg || !username) return null;
 
-  const cacheKey = `${username.toLowerCase()}:${targetOrg.toLowerCase()}`;
-  const cached = userOrgRoleCache.get(cacheKey);
-  if (cached && Date.now() < cached.expiresAt) {
-    return cached.role;
-  }
-
   try {
-    const octokit = await getInstallationOctokit(targetOrg);
-    const { data: membership } = await octokit.rest.orgs.getMembershipForUser({
-      org: targetOrg,
-      username,
-    });
-
-    const role =
-      membership.state === "active"
-        ? membership.role === "admin"
-          ? "admin"
-          : "member"
-        : null;
-
-    userOrgRoleCache.set(cacheKey, {
-      role,
-      expiresAt: Date.now() + USER_ORG_ROLE_TTL_MS,
-    });
-    return role;
-  } catch (err: any) {
-    if (err?.status === 404) {
-      userOrgRoleCache.set(cacheKey, {
-        role: null,
-        expiresAt: Date.now() + USER_ORG_ROLE_TTL_MS,
-      });
-    }
+    return await cachedCall(
+      ["github-org-role", username.toLowerCase(), targetOrg.toLowerCase()],
+      { revalidate: GITHUB_LOOKUP_TTL_SECONDS, tags: [orgRoleTag(username, targetOrg)] },
+      async () => {
+        try {
+          const octokit = await getInstallationOctokit(targetOrg);
+          const { data: membership } = await octokit.rest.orgs.getMembershipForUser({
+            org: targetOrg,
+            username,
+          });
+          return membership.state === "active"
+            ? membership.role === "admin"
+              ? "admin"
+              : "member"
+            : null;
+        } catch (err: any) {
+          // 404(멤버 아님)는 확정 결과이므로 캐시한다. 그 외 오류는 던져서 캐시하지 않는다.
+          if (err?.status === 404) return null;
+          throw err;
+        }
+      }
+    );
+  } catch {
     return null;
   }
 }
