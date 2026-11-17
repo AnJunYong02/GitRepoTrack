@@ -1,3 +1,6 @@
+/* 뉴모피즘 대시보드용 한글 폰트 (font-display 클래스를 쓴 곳에만 적용) */
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,12 +8,33 @@
 :root {
   --background: #ffffff;
   --foreground: #0f172a;
+
+  /* 뉴모피즘 토큰 (RGB 채널로 저장해 Tailwind 투명도 수식어를 쓸 수 있게 함) */
+  --surface: 236 233 228; /* 따뜻한 베이지 바탕·카드 */
+  --surface-raised: 241 239 235; /* 강조 카드(살짝 밝게) */
+  --ink: 47 45 42; /* 본문 글자 */
+  --muted: 128 123 115; /* 보조 글자·라벨 */
+  --accent: 92 194 138; /* 초록 점·진행 링 */
+  --violet: 220 211 245; /* 목록 아이콘 원 배경 */
+  --violet-ink: 110 86 207; /* 목록 아이콘 */
+  --neu-light: 255 255 255; /* 왼쪽 위 밝은 그림자 */
+  --neu-dark: 174 166 153; /* 오른쪽 아래 어두운 그림자 */
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #090d16;
     --foreground: #f8fafc;
+
+    --surface: 38 36 34;
+    --surface-raised: 44 42 40;
+    --ink: 236 233 228;
+    --muted: 160 154 145;
+    --accent: 92 194 138;
+    --violet: 67 56 110;
+    --violet-ink: 200 186 245;
+    --neu-light: 58 55 52;
+    --neu-dark: 18 17 16;
   }
 }
 
