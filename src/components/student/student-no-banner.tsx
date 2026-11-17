@@ -78,17 +78,17 @@ export function StudentNoBanner({
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-5 shadow-sm space-y-3">
+    <div className="rounded-[28px] bg-surface p-5 sm:p-6 shadow-neu space-y-3">
       {linkedStudentNo ? (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 shrink-0">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-lilac text-lilac-ink shrink-0">
               <GraduationCap className="w-5 h-5" />
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold text-slate-500">내 학번</span>
-                <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 dark:bg-blue-950/80 px-2 py-0.5 text-sm font-bold text-blue-700 dark:text-blue-300 ring-1 ring-blue-600/20">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">내 학번</span>
+                <span className="inline-flex items-center gap-1 rounded-xl px-3 py-1 text-sm font-semibold tracking-wide text-ink shadow-neu-inset">
                   <span>{linkedStudentNo}</span>
                 </span>
               </div>
@@ -100,9 +100,9 @@ export function StudentNoBanner({
               type="button"
               onClick={() => handleSync(linkedStudentNo)}
               disabled={loading}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition disabled:opacity-70"
+              className="inline-flex items-center gap-1.5 rounded-2xl bg-surface px-4 py-2.5 text-xs font-semibold text-ink shadow-neu-sm hover:shadow-neu-inset transition disabled:opacity-70"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-blue-600" : ""}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-lilac-ink" : ""}`} />
               <span>
                 {loading
                   ? `새로고침 중... (${(elapsedMs / 1000).toFixed(1)}초)`
@@ -114,17 +114,17 @@ export function StudentNoBanner({
       ) : (
         <div className="space-y-3">
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-lilac text-lilac-ink shrink-0 mt-0.5">
               <GraduationCap className="w-5 h-5" />
             </div>
             <div className="space-y-1">
-              <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+              <h2 className="text-sm font-semibold text-ink">
                 최초 1회 내 학번 등록 및 Organization 과제 Repo 연동
               </h2>
-              <p className="text-xs text-slate-500">
-                본인의 학번(예: <code className="font-mono font-semibold text-slate-700 dark:text-slate-300">22300743</code>)을 입력하면 Organization 내 본인 학번의 과제 저장소들을 자동으로 가져옵니다.
+              <p className="text-xs text-muted">
+                본인의 학번(예: <code className="font-mono font-semibold text-ink">22300743</code>)을 입력하면 Organization 내 본인 학번의 과제 저장소들을 자동으로 가져옵니다.
               </p>
-              <p className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
+              <p className="text-[11px] font-medium text-amber-700 dark:text-amber-400">
                 🔒 타 학생의 Repo 보호를 위해 한 번 등록된 학번은 이후 변경할 수 없으니 반드시 본인의 학번을 정확히 입력해주세요.
               </p>
             </div>
@@ -142,13 +142,13 @@ export function StudentNoBanner({
               value={studentNoInput}
               onChange={(e) => setStudentNoInput(e.target.value)}
               placeholder="본인 학번 입력 (예: 22300743)"
-              className="w-full sm:w-64 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-xs font-mono focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full sm:w-64 rounded-2xl border-0 bg-transparent px-4 py-2.5 text-xs font-mono text-ink placeholder:text-muted shadow-neu-inset focus:outline-none focus:ring-2 focus:ring-lilac-ink/30"
               disabled={loading}
             />
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500 shadow-sm transition disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-2xl bg-surface px-4 py-2.5 text-xs font-semibold text-ink shadow-neu-sm hover:shadow-neu-inset transition disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
               <span>
@@ -162,21 +162,21 @@ export function StudentNoBanner({
       )}
 
       {loading && (
-        <div className="rounded-lg border border-blue-100 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-950/30 p-3 space-y-2">
+        <div className="rounded-2xl p-3 shadow-neu-inset space-y-2">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-semibold text-blue-700 dark:text-blue-300">
+            <span className="font-semibold text-ink">
               {elapsedMs < 800
                 ? `1/2단계: ${activeOrg} Organization 연결 확인 중...`
                 : `2/2단계: 학번(${linkedStudentNo || studentNoInput})과 일치하는 최신 과제 저장소 동기화 중...`}
             </span>
-            <span className="inline-flex items-center gap-1 font-mono text-[11px] font-bold text-blue-600 dark:text-blue-400">
+            <span className="inline-flex items-center gap-1 font-mono text-[11px] font-bold text-muted">
               <Clock className="w-3 h-3" />
               {(elapsedMs / 1000).toFixed(1)}초 경과
             </span>
           </div>
-          <div className="w-full h-1.5 rounded-full bg-blue-100 dark:bg-blue-900 overflow-hidden">
+          <div className="w-full h-1.5 rounded-full bg-muted/15 overflow-hidden">
             <div
-              className="h-full rounded-full bg-blue-600 transition-all duration-150 ease-out"
+              className="h-full rounded-full bg-accent transition-all duration-150 ease-out"
               style={{
                 width: `${Math.min(
                   94,
@@ -190,7 +190,7 @@ export function StudentNoBanner({
 
       {feedback && (
         <div
-          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs ${
+          className={`flex items-center gap-2 rounded-2xl px-3 py-2 text-xs ${
             feedback.type === "success"
               ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
               : "bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300"
