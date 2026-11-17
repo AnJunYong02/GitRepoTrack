@@ -16,8 +16,10 @@ export interface StudentSidebarProps {
   isOwner: boolean;
   githubLogin?: string | null;
   avatarUrl?: string | null;
-  /** 사이드바 하단 "과제 상태" 숫자 */
-  status: { satisfied: number; unmet: number; pending: number };
+  /** 사이드바 하단 "과제 상태" 숫자 (없으면 카드를 숨김) */
+  status?: { satisfied: number; unmet: number; pending: number };
+  /** 현재 화면이 학생 대시보드면 "dashboard" (분석 대시보드 등 하위 화면은 "none") */
+  active?: "dashboard" | "none";
 }
 
 const SECTION_LABEL = "px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted";
@@ -34,6 +36,7 @@ export function StudentSidebar({
   githubLogin,
   avatarUrl,
   status,
+  active = "dashboard",
 }: StudentSidebarProps) {
   return (
     <aside
@@ -58,8 +61,8 @@ export function StudentSidebar({
           <div className="flex gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">
             <Link
               href={`/dashboard?org=${encodeURIComponent(activeOrg)}`}
-              aria-current="page"
-              className={`${NAV_ITEM_ACTIVE} shrink-0`}
+              aria-current={active === "dashboard" ? "page" : undefined}
+              className={`${active === "dashboard" ? NAV_ITEM_ACTIVE : NAV_ITEM} shrink-0`}
             >
               <LayoutDashboard className="h-[18px] w-[18px]" />
               <span>대시보드</span>
@@ -125,6 +128,7 @@ export function StudentSidebar({
 
       {/* 하단: 과제 상태 + 프로필 */}
       <div className="mt-auto space-y-4">
+        {status && (
         <div className="rounded-2xl bg-surface p-4 shadow-neu-sm">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">과제 상태</p>
           <ul className="mt-2 space-y-1.5 text-sm text-ink/80">
@@ -142,6 +146,7 @@ export function StudentSidebar({
             </li>
           </ul>
         </div>
+        )}
 
         <div className="hidden lg:block">
           <ProfileRow githubLogin={githubLogin} avatarUrl={avatarUrl} isOwner={isOwner} activeOrg={activeOrg} />
