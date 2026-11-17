@@ -1,4 +1,4 @@
-import { Navbar } from "@/components/navbar";
+import { StudentSidebar } from "@/components/student/student-sidebar";
 import { requireStudentRepo } from "@/lib/auth/guards";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { ClientDashboardView } from "./client-view";
@@ -9,7 +9,7 @@ export default async function StudentDashboardDetailPage({
   params: Promise<{ studentRepoId: string }>;
 }) {
   const { studentRepoId } = await params;
-  const { repo, isOrgOwner } = await requireStudentRepo(studentRepoId);
+  const { profile, repo, isOrgOwner } = await requireStudentRepo(studentRepoId);
 
   // Fetch status
   const { data: status } = await supabaseAdmin
@@ -51,14 +51,19 @@ export default async function StudentDashboardDetailPage({
     (repo.full_name ? repo.full_name.split("/")[0] : "");
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <Navbar
-        orgName={repoOrg}
-        assignmentTitle={repo.assignments?.title || repo.full_name}
-      />
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-        <ClientDashboardView studentRepoId={studentRepoId} isOrgOwner={isOrgOwner} initialData={initialData} />
-      </main>
+    <div className="min-h-screen bg-surface font-display text-ink">
+      <div className="mx-auto flex max-w-[1600px] flex-col gap-6 p-4 sm:p-6 lg:flex-row lg:gap-10 lg:pr-10">
+        <StudentSidebar
+          activeOrg={repoOrg}
+          isOwner={isOrgOwner}
+          githubLogin={profile?.github_login}
+          avatarUrl={profile?.avatar_url}
+          active="none"
+        />
+        <main className="min-w-0 flex-1 lg:py-6">
+          <ClientDashboardView studentRepoId={studentRepoId} isOrgOwner={isOrgOwner} initialData={initialData} />
+        </main>
+      </div>
     </div>
   );
 }
