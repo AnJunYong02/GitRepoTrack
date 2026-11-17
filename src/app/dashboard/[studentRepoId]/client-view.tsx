@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { BackLink } from "@/components/navigation/back-link";
-import { RefreshCw, Play, Clock, AlertCircle, GitBranch, ArrowLeft, ExternalLink, Trophy, Download } from "lucide-react";
+import { RefreshCw, Play, Clock, AlertCircle, GitBranch, ArrowLeft, ExternalLink, Trophy, Download, GitCommit, FileText } from "lucide-react";
 import { ReadmeChecklist } from "@/components/student/readme-checklist";
 import { CommitChart } from "@/components/student/commit-chart";
 import { CommitTimeline } from "@/components/student/commit-timeline";
@@ -19,6 +19,10 @@ interface ClientDashboardViewProps {
     status: any;
     evaluation: any;
     commits: any[];
+    /** 최신 스냅샷의 분석된 커밋 수 (분석 전이면 null) */
+    snapshotCommitCount: number | null;
+    /** 현재 기준의 최소 커밋 수 (0이면 기준 없음 → 최소 1개) */
+    minCommits: number;
   };
 }
 
@@ -59,22 +63,54 @@ export function ClientDashboardView({ studentRepoId, isOrgOwner = false, initial
     data.assignment?.org_name ||
     (data.repo?.full_name ? data.repo.full_name.split("/")[0] : "");
 
-  // 상단 통계용 표시 값 (기존 평가 결과에서 꺼내기만 함)
+  // 요약 카드 표시 값 — 학생 대시보드 목록(dashboard/page.tsx)과 같은 규칙
+  const hasEvaluation = Boolean(evalData);
+  const hasSnapshot = Boolean(data.status?.latest_snapshot_id) && data.snapshotCommitCount !== null;
+  const commitCount = data.snapshotCommitCount ?? 0;
+  const commitTarget = data.minCommits > 0 ? data.minCommits : 1;
+  const commitSatisfied = hasSnapshot && commitCount > 0 && commitCount >= commitTarget;
+  const commitShortfall = Math.max(0, commitTarget - commitCount);
+
   const readmeDetails: { keyword: string; found: boolean }[] = Array.isArray(readmeResults.details)
     ? readmeResults.details
     : [];
   const readmeTotal = readmeDetails.length;
   const readmePassed = readmeDetails.filter((d) => d.found).length;
-  const hasEvaluation = Boolean(evalData);
-  // 키워드 기준이 없으면 README 존재 여부로 0/100% (학생 대시보드 통계와 같은 규칙)
-  const readmePercent = !hasEvaluation
-    ? null
+
+  const commitView: SummaryView = !hasSnapshot
+    ? { tone: "idle", value: "-", unit: "", note: "분석 필요", percent: 0 }
+    : {
+        tone: commitSatisfied ? "ok" : commitCount === 0 ? "bad" : "warn",
+        value: String(commitCount),
+        unit: `/ ${commitTarget}개`,
+        note: commitSatisfied
+          ? "✓ 커밋 조건 충족"
+          : commitCount === 0
+          ? "✕ 커밋 없음"
+          : `⚠ ${commitShortfall}개 부족`,
+        percent: Math.min(100, Math.round((commitCount / commitTarget) * 100)),
+        caption: data.minCommits > 0 ? `기준 ${data.minCommits}개 중` : "기준 없음 · 최소 1개",
+      };
+
+  const keywordView: SummaryView = !hasEvaluation
+    ? { tone: "idle", value: "-", unit: "", note: "분석 필요", percent: 0 }
     : readmeTotal > 0
-    ? Math.round((readmePassed / readmeTotal) * 100)
-    : readmeResults.satisfied
-    ? 100
-    : 0;
-  const fetchedAt = data.status?.fetched_at ? new Date(data.status.fetched_at) : null;
+    ? {
+        tone: readmeResults.satisfied ? "ok" : "warn",
+        value: String(readmePassed),
+        unit: `/ ${readmeTotal}개`,
+        note: readmeResults.satisfied ? "✓ 키워드 모두 사용" : `⚠ ${readmeTotal - readmePassed}개 미사용`,
+        percent: Math.round((readmePassed / readmeTotal) * 100),
+        caption: `필수 키워드 ${readmeTotal}개 중`,
+      }
+    : {
+        tone: readmeResults.satisfied ? "ok" : "warn",
+        value: readmeResults.satisfied ? "✓" : "✕",
+        unit: "",
+        note: readmeResults.satisfied ? "✓ README 확인됨" : "⚠ README.md 누락",
+        percent: readmeResults.satisfied ? 100 : 0,
+        caption: "키워드 기준 없음",
+      };
 
   const ACTION_BTN =
     "inline-flex shrink-0 items-center gap-1.5 rounded-2xl bg-surface px-3.5 py-3 text-xs font-semibold text-ink shadow-neu-sm transition hover:shadow-neu-inset disabled:opacity-50";
@@ -150,74 +186,42 @@ export function ClientDashboardView({ studentRepoId, isOrgOwner = false, initial
         </div>
       )}
 
-      {/* 상단: 마감 카운트다운 · README 통과율 · 제출 판정 */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,2.2fr)]">
-        <DeadlineCountdown
-          deadlineAt={data.assignment?.deadline_at ?? null}
-          commitDates={(data.commits || []).map((c: any) => c.committed_at)}
-          isSubmitted={isSubmitted}
-        />
-
-        <section aria-label="README 통과율" className={`${CARD} flex items-center justify-center p-5`}>
-          <ProgressRing percent={readmePercent} caption={readmePercent === null ? "분석 전" : "README 통과"} />
-        </section>
-
-        <section aria-label="제출 판정" className={`${CARD} p-6 md:col-span-2 xl:col-span-1`}>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="inline-flex items-center gap-2 text-sm text-ink/80">
-              <span className={`h-1.5 w-1.5 rounded-full ${isSubmitted ? "bg-accent" : "bg-amber-500"}`} />
-              제출 판정:{" "}
-              <strong className={isSubmitted ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}>
-                {isSubmitted ? "충족 (제출 완료)" : "미충족"}
-              </strong>
+      {/* 제출 요약: 커밋 · README 키워드 · 마감 준수 (한 카드) */}
+      <section aria-label="제출 요약" className={`${CARD} p-6 sm:p-7`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-2 text-sm text-ink/80">
+            <span className={`h-1.5 w-1.5 rounded-full ${isSubmitted ? "bg-accent" : "bg-amber-500"}`} />
+            제출 판정:{" "}
+            <strong className={isSubmitted ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}>
+              {isSubmitted ? "충족 (제출 완료)" : "미충족"}
+            </strong>
+          </span>
+          {data.status?.fetched_at && (
+            <span className="flex items-center gap-1 text-xs text-muted">
+              <Clock className="w-3 h-3" />
+              마지막 갱신: {new Date(data.status.fetched_at).toLocaleString("ko-KR")}
             </span>
-            {data.status?.fetched_at && (
-              <span className="flex items-center gap-1 text-xs text-muted">
-                <Clock className="w-3 h-3" />
-                마지막 갱신: {new Date(data.status.fetched_at).toLocaleString("ko-KR")}
-              </span>
-            )}
-          </div>
-
-          <div className="mt-5 grid grid-cols-3 gap-3 sm:gap-6">
-            <StatTile label="총 커밋" value={String((data.commits || []).length)} caption="기록된 커밋 수" />
-            <StatTile
-              label="README 키워드"
-              value={!hasEvaluation ? "-" : readmeTotal > 0 ? String(readmePassed) : readmeResults.satisfied ? "✓" : "✕"}
-              caption={
-                !hasEvaluation
-                  ? "분석 전"
-                  : readmeTotal > 0
-                  ? `${readmeTotal}개 중 통과`
-                  : readmeResults.satisfied
-                  ? "README 확인됨"
-                  : "README.md 누락"
-              }
-            />
-            <StatTile
-              label="마지막 갱신"
-              value={
-                fetchedAt
-                  ? new Intl.DateTimeFormat("ko-KR", { month: "numeric", day: "numeric", timeZone: "Asia/Seoul" })
-                      .format(fetchedAt)
-                      .replace(/\.$/, "")
-                  : "-"
-              }
-              caption={
-                fetchedAt
-                  ? new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" }).format(fetchedAt)
-                  : "아직 분석 전"
-              }
-            />
-          </div>
-
-          {data.status?.stale && (
-            <p className="mt-5 rounded-2xl px-4 py-3 text-xs font-medium text-amber-700 shadow-neu-inset dark:text-amber-400">
-              ⚠️ 최근 push 감지됨 (새로고침을 눌러 최신 반영)
-            </p>
           )}
-        </section>
-      </div>
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-3 md:gap-0 md:divide-x md:divide-muted/20">
+          <SummaryColumn label="커밋" icon={<GitCommit className="h-3.5 w-3.5" />} view={commitView} />
+          <SummaryColumn label="README 키워드" icon={<FileText className="h-3.5 w-3.5" />} view={keywordView} />
+          <div className="md:px-6">
+            <DeadlineCountdown
+              deadlineAt={data.assignment?.deadline_at ?? null}
+              commitDates={(data.commits || []).map((c: any) => c.committed_at)}
+              isSubmitted={isSubmitted}
+            />
+          </div>
+        </div>
+
+        {data.status?.stale && (
+          <p className="mt-6 rounded-2xl px-4 py-3 text-xs font-medium text-amber-700 shadow-neu-inset dark:text-amber-400">
+            ⚠️ 최근 push 감지됨 (새로고침을 눌러 최신 반영)
+          </p>
+        )}
+      </section>
 
       {/* 아래: README 키워드 검사(넓게) + 커밋 추이·이력 */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -238,43 +242,51 @@ export function ClientDashboardView({ studentRepoId, isOrgOwner = false, initial
   );
 }
 
-/** 숫자 타일 (학생 대시보드의 숫자 칸과 같은 모양) */
-function StatTile({ label, value, caption }: { label: string; value: string; caption: string }) {
-  return (
-    <div className="flex min-w-0 flex-col items-center gap-3 text-center">
-      <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted sm:text-[11px] sm:tracking-[0.14em]">{label}</span>
-      <div className="flex h-20 w-20 items-center justify-center rounded-3xl shadow-neu-inset sm:h-24 sm:w-24">
-        <span className={`text-3xl font-light tracking-tight sm:text-4xl ${value === "-" ? "text-muted" : "text-ink"}`}>{value}</span>
-      </div>
-      <span className="text-xs text-ink/80">{caption}</span>
-    </div>
-  );
+type SummaryTone = "ok" | "warn" | "bad" | "idle";
+
+interface SummaryView {
+  tone: SummaryTone;
+  value: string;
+  unit: string;
+  note: string;
+  percent: number;
+  caption?: string;
 }
 
-/** 원형 진행 링 (학생 대시보드 달성률 링과 같은 모양) */
-function ProgressRing({ percent, caption }: { percent: number | null; caption: string }) {
-  const radius = 64;
-  const circumference = 2 * Math.PI * radius;
-  const dash = ((percent ?? 0) / 100) * circumference;
+const SUMMARY_TONE: Record<SummaryTone, { text: string; bar: string }> = {
+  ok: { text: "text-emerald-600 dark:text-emerald-400", bar: "bg-emerald-500" },
+  warn: { text: "text-amber-600 dark:text-amber-400", bar: "bg-amber-500" },
+  bad: { text: "text-red-600 dark:text-red-400", bar: "bg-red-500" },
+  idle: { text: "text-muted", bar: "bg-muted/40" },
+};
+
+/** 요약 카드의 한 칸: 라벨 · 큰 숫자(현재 / 기준) · 진행 바 · 상태 */
+function SummaryColumn({ label, icon, view }: { label: string; icon: React.ReactNode; view: SummaryView }) {
+  const tone = SUMMARY_TONE[view.tone];
   return (
-    <div className="relative flex h-44 w-44 items-center justify-center rounded-full shadow-neu">
-      <svg viewBox="0 0 160 160" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden>
-        <circle cx="80" cy="80" r={radius} fill="none" strokeWidth="6" className="stroke-muted/15" />
-        <circle
-          cx="80"
-          cy="80"
-          r={radius}
-          fill="none"
-          strokeWidth="6"
-          strokeLinecap="round"
-          strokeDasharray={`${dash} ${circumference}`}
-          className="stroke-accent"
-        />
-      </svg>
-      <div className="text-center">
-        <div className="text-5xl font-light tracking-tight text-ink">{percent === null ? "-" : `${percent}%`}</div>
-        <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">{caption}</div>
+    <div className="space-y-3 md:px-6 md:first:pl-0">
+      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+        {icon}
+        {label}
+      </span>
+      {view.caption && <p className="text-xs text-muted">{view.caption}</p>}
+      <p className="flex items-baseline gap-2">
+        <span className={`text-5xl font-light tracking-tight ${view.tone === "idle" ? "text-muted" : "text-ink"}`}>
+          {view.value}
+        </span>
+        {view.unit && <span className="text-lg font-light text-muted">{view.unit}</span>}
+      </p>
+      <div
+        className="h-2 w-full overflow-hidden rounded-full shadow-neu-inset"
+        role="progressbar"
+        aria-label={`${label} 진행률`}
+        aria-valuenow={view.percent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${view.percent}%` }} />
       </div>
+      <p className={`text-xs font-semibold ${tone.text}`}>{view.note}</p>
     </div>
   );
 }

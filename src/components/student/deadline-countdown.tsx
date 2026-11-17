@@ -67,31 +67,24 @@ export function DeadlineCountdown({
       ? commitDates.reduce((a, b) => (new Date(a).getTime() > new Date(b).getTime() ? a : b))
       : null;
 
+  // 제출 요약 카드 안의 "마감 준수" 칸: 마감 일시와 마지막 커밋 시각을 나란히 비교
   return (
-    <section
-      aria-label="마감까지 남은 시간"
-      className="neu-hover flex flex-col items-center justify-center gap-3 rounded-[28px] bg-surface p-6 text-center shadow-neu"
-    >
+    <div className="space-y-3" aria-label="마감 준수">
       <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
         <Timer className="w-3.5 h-3.5" />
-        마감까지
+        마감 준수
       </span>
-      <p
-        className={`text-3xl font-light leading-tight tracking-tight sm:text-4xl ${
-          countdown?.expired
-            ? "text-muted"
-            : countdown && countdown.days < 1
-            ? "text-red-600 dark:text-red-400"
-            : "text-ink"
-        }`}
-      >
-        {!deadlineAt ? "마감 없음" : countdown ? countdown.label : "계산 중..."}
-      </p>
 
-      <div className="space-y-0.5 text-[11px] text-muted">
-        {deadlineAt && <p>마감 일시: {formatAbsoluteKst(deadlineAt)} (KST)</p>}
-        <p>마지막 커밋: {latestCommit ? `${formatAbsoluteKst(latestCommit)} (KST)` : "-"}</p>
-      </div>
+      <dl className="space-y-2 rounded-2xl p-4 text-sm shadow-neu-inset">
+        <div className="flex items-baseline justify-between gap-3">
+          <dt className="text-xs text-muted">마감</dt>
+          <dd className="font-medium text-ink">{deadlineAt ? `${formatAbsoluteKst(deadlineAt)} (KST)` : "마감 없음"}</dd>
+        </div>
+        <div className="flex items-baseline justify-between gap-3">
+          <dt className="text-xs text-muted">마지막 커밋</dt>
+          <dd className="font-medium text-ink">{latestCommit ? `${formatAbsoluteKst(latestCommit)} (KST)` : "-"}</dd>
+        </div>
+      </dl>
 
       <span
         className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 ${badge.className}`}
@@ -99,6 +92,23 @@ export function DeadlineCountdown({
         <badge.Icon className="w-3.5 h-3.5" />
         <span>{badge.text}</span>
       </span>
-    </section>
+
+      {deadlineAt && (
+        <p className="text-xs text-muted">
+          마감까지:{" "}
+          <strong
+            className={`font-semibold ${
+              countdown?.expired
+                ? "text-muted"
+                : countdown && countdown.days < 1
+                ? "text-red-600 dark:text-red-400"
+                : "text-ink"
+            }`}
+          >
+            {countdown ? countdown.label : "계산 중..."}
+          </strong>
+        </p>
+      )}
+    </div>
   );
 }
