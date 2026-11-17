@@ -21,21 +21,29 @@
   --neu-dark: 174 166 153; /* 오른쪽 아래 어두운 그림자 */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #090d16;
-    --foreground: #f8fafc;
+/*
+ * 다크 모드: <html class="dark"> 하나로 판단한다 (Tailwind darkMode: "class"와 같은 기준).
+ * 클래스는 layout.tsx의 인라인 스크립트가 저장된 선택(없으면 OS 설정)으로 첫 화면 전에 붙인다.
+ */
+:root {
+  color-scheme: light;
+}
 
-    --surface: 38 36 34;
-    --surface-raised: 44 42 40;
-    --ink: 236 233 228;
-    --muted: 160 154 145;
-    --accent: 92 194 138;
-    --violet: 67 56 110;
-    --violet-ink: 200 186 245;
-    --neu-light: 58 55 52;
-    --neu-dark: 18 17 16;
-  }
+:root.dark {
+  color-scheme: dark;
+
+  --background: #090d16;
+  --foreground: #f8fafc;
+
+  --surface: 38 36 34;
+  --surface-raised: 44 42 40;
+  --ink: 236 233 228;
+  --muted: 160 154 145;
+  --accent: 92 194 138;
+  --violet: 67 56 110;
+  --violet-ink: 200 186 245;
+  --neu-light: 58 55 52;
+  --neu-dark: 18 17 16;
 }
 
 body {

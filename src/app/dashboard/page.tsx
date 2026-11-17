@@ -16,6 +16,7 @@ import { StudentRepoList, StudentRepoItemData } from "@/components/student/stude
 import { PreviousAssignmentCard, StudentFocusDashboard } from "@/components/student/student-summary";
 import { StudentSidebar } from "@/components/student/student-sidebar";
 import { GoalsPanel } from "@/components/student/goals-panel";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { ArrowRight, Shield } from "lucide-react";
 
 const SELECT_STUDENT_REPOS = `
@@ -331,6 +332,8 @@ export default async function DashboardPage({
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               )}
+              {/* 라이트/다크 모드 전환 */}
+              <ThemeToggle />
             </div>
           </header>
 
