@@ -77,13 +77,13 @@ export function ClientDashboardView({ studentRepoId, isOrgOwner = false, initial
   const fetchedAt = data.status?.fetched_at ? new Date(data.status.fetched_at) : null;
 
   const ACTION_BTN =
-    "inline-flex items-center gap-1.5 rounded-2xl bg-surface px-4 py-3 text-xs font-semibold text-ink shadow-neu-sm transition hover:shadow-neu-inset disabled:opacity-50";
+    "inline-flex shrink-0 items-center gap-1.5 rounded-2xl bg-surface px-3.5 py-3 text-xs font-semibold text-ink shadow-neu-sm transition hover:shadow-neu-inset disabled:opacity-50";
   const CARD = "neu-hover rounded-[28px] bg-surface shadow-neu";
 
   return (
     <div className="space-y-8">
       {/* 헤더: 뒤로가기 · 제목 · repo 링크 + 동작 버튼 */}
-      <header className="flex flex-col gap-5 2xl:flex-row 2xl:items-start 2xl:justify-between">
+      <header className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0 space-y-3">
           <BackLink
             fallbackHref={
@@ -99,12 +99,12 @@ export function ClientDashboardView({ studentRepoId, isOrgOwner = false, initial
             <span>{isOrgOwner ? "뒤로가기 (과제 관리 화면)" : "뒤로가기 (내 과제 목록)"}</span>
           </BackLink>
 
-          <h1 className="text-3xl font-normal tracking-tight text-ink sm:text-4xl">{data.assignment?.title}</h1>
+          <h1 className="text-3xl font-normal tracking-tight text-ink sm:text-4xl lg:text-3xl 2xl:text-4xl">{data.assignment?.title}</h1>
           <a
             href={`https://github.com/${data.repo.full_name}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex flex-wrap items-center gap-1.5 break-all font-mono text-xs text-muted hover:text-ink hover:underline sm:text-sm"
+            className="inline-flex flex-wrap items-center gap-1.5 break-all font-mono text-xs text-muted hover:text-ink hover:underline sm:text-sm lg:text-xs 2xl:text-sm"
           >
             <GitBranch className="w-3.5 h-3.5 shrink-0" />
             <span>{data.repo.full_name}</span>
@@ -113,7 +113,7 @@ export function ClientDashboardView({ studentRepoId, isOrgOwner = false, initial
           </a>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 lg:shrink-0 lg:flex-nowrap lg:justify-end">
           <button onClick={() => handleAnalyze(false)} disabled={loading} className={ACTION_BTN}>
             <Play className="w-3.5 h-3.5 text-lilac-ink" />
             <span>분석하기</span>
