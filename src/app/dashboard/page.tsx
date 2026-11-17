@@ -13,7 +13,9 @@ import { OrganizationSwitcher } from "@/components/org-switcher";
 import { OrgSelectorView } from "@/components/org-selector-view";
 import { StudentNoBanner } from "@/components/student/student-no-banner";
 import { StudentRepoList, StudentRepoItemData } from "@/components/student/student-repo-list";
-import { StudentFocusDashboard } from "@/components/student/student-summary";
+import { PreviousAssignmentCard, StudentFocusDashboard } from "@/components/student/student-summary";
+import { StudentSidebar } from "@/components/student/student-sidebar";
+import { GoalsPanel } from "@/components/student/goals-panel";
 import { ArrowRight, Shield } from "lucide-react";
 
 const SELECT_STUDENT_REPOS = `
@@ -275,77 +277,102 @@ export default async function DashboardPage({
     };
   });
 
-  return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <Navbar orgName={activeOrg} assignmentTitle="내 과제 목록" />
+  // 사이드바 표시용 값 (기존 계산 결과에서 꺼내기만 함)
+  const activeOrgOption = organizations.find(
+    (o) => o.name.toLowerCase() === activeOrg.toLowerCase()
+  );
+  const statusCounts = {
+    satisfied: repoItems.filter((r) => r.isSubmitted).length,
+    unmet: repoItems.filter((r) => r.hasSnapshot && !r.isSubmitted).length,
+    pending: repoItems.filter((r) => !r.hasSnapshot).length,
+  };
 
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        {/* Staff Quick Banner (shown only if user is Owner of the selected Organization) */}
-        {isOwnerOfActiveOrg && (
-          <div className="rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/60 dark:bg-blue-950/40 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <span className="text-sm font-bold text-blue-900 dark:text-blue-200">
-                  {activeOrg} Organization의 Owner(관리자) 권한이 확인되었습니다
-                </span>
-              </div>
-              <p className="text-xs text-blue-700 dark:text-blue-300">
-                과제 전체 제출 현황 확인, 기준 수정 및 일괄 ZIP 다운로드는 관리자 대시보드에서 진행할 수 있습니다.
+  return (
+    <div className="min-h-screen bg-surface font-display text-ink">
+      <div className="mx-auto flex max-w-[1600px] flex-col gap-6 p-4 sm:p-6 lg:flex-row lg:gap-10 lg:pr-10">
+        <StudentSidebar
+          activeOrg={activeOrg}
+          orgAvatarUrl={activeOrgOption?.avatarUrl}
+          isOwner={isOwnerOfActiveOrg}
+          githubLogin={profile?.github_login}
+          avatarUrl={profile?.avatar_url}
+          status={statusCounts}
+        />
+
+        <main className="min-w-0 flex-1 space-y-8 lg:py-6">
+          {/* 헤더: 인사 + Organization 전환 + (Owner) 관리자 대시보드 */}
+          <header className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div>
+              <h1 className="text-3xl font-normal tracking-tight text-ink sm:text-4xl">
+                {profile?.github_login ? `${profile.github_login}님, 안녕하세요.` : "안녕하세요."}
+              </h1>
+              <p className="mt-2 text-sm text-muted sm:text-base">
+                {activeOrg}의 내 과제 현황입니다.
               </p>
             </div>
-            <Link
-              href={`/admin?org=${encodeURIComponent(activeOrg)}`}
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500 shadow-sm transition shrink-0"
-            >
-              <span>관리자 대시보드로 이동</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        )}
 
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">내 과제 목록</h1>
-        </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+              <OrganizationSwitcher
+                activeOrg={activeOrg}
+                organizations={organizations}
+                basePath="/dashboard"
+                isOwner={isOwnerOfActiveOrg}
+                variant="compact"
+              />
+              {/* Owner일 때만: 관리자 대시보드로 이동 */}
+              {isOwnerOfActiveOrg && (
+                <Link
+                  href={`/admin?org=${encodeURIComponent(activeOrg)}`}
+                  title="과제 전체 제출 현황 확인, 기준 수정 및 일괄 ZIP 다운로드는 관리자 대시보드에서 진행할 수 있습니다."
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-surface px-5 py-3 text-xs font-semibold uppercase tracking-[0.1em] text-ink shadow-neu-sm transition hover:shadow-neu-inset shrink-0"
+                >
+                  <Shield className="h-3.5 w-3.5 text-lilac-ink" />
+                  <span>관리자 대시보드</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              )}
+            </div>
+          </header>
 
-        {/* Multi-Organization Toggle Switcher */}
-        <OrganizationSwitcher
-          activeOrg={activeOrg}
-          organizations={organizations}
-          basePath="/dashboard"
-          isOwner={isOwnerOfActiveOrg}
-        />
+          {/* Student Number Binding & Org Repo Sync Banner */}
+          <StudentNoBanner
+            initialStudentNo={studentNo}
+            repoCount={repoItems.length}
+            activeOrg={activeOrg}
+          />
 
-        {/* Student Number Binding & Org Repo Sync Banner */}
-        <StudentNoBanner
-          initialStudentNo={studentNo}
-          repoCount={repoItems.length}
-          activeOrg={activeOrg}
-        />
+          {repoItems.length > 0 ? (
+            <>
+              {/* 날짜 · 달성률 · 이번주 과제(최신) 통계 */}
+              <StudentFocusDashboard current={repoItems[0]} nowMs={nowMs} />
 
-        {repoItems.length > 0 ? (
-          <>
-            {/* 이번주 과제(최신) 통계 + 직전 과제 1개 */}
-            <StudentFocusDashboard
-              current={repoItems[0]}
-              previous={repoItems[1] ?? null}
-              nowMs={nowMs}
-            />
-            <StudentRepoList items={repoItems} />
-          </>
-        ) : (
-          <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-800 p-12 text-center text-slate-500">
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              {studentNo
-                ? `${activeOrg} Organization에서 학번(${studentNo})과 일치하는 과제 저장소를 찾지 못했습니다.`
-                : "위 입력창에 본인의 학번(예: 22300743)을 입력하여 과제 저장소를 불러오세요."}
-            </p>
-            <p className="text-xs text-slate-400 mt-1">
-              상단의 <strong>Organization 전환</strong> 기능으로 다른 수업 Organization을 선택하거나, 우측 상단의 <strong>[최신 Repo 동기화]</strong>를 눌러 다시 스캔할 수 있습니다.
-            </p>
-          </div>
-        )}
-      </main>
+              {/* 내 과제 목록(직전 과제 포함) + Goals(비워 둠) */}
+              <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                <StudentRepoList
+                  items={repoItems}
+                  topSlot={
+                    repoItems[1] ? (
+                      <PreviousAssignmentCard item={repoItems[1]} nowMs={nowMs} />
+                    ) : undefined
+                  }
+                />
+                <GoalsPanel />
+              </div>
+            </>
+          ) : (
+            <div className="rounded-[28px] p-12 text-center shadow-neu-inset">
+              <p className="text-sm font-medium text-ink">
+                {studentNo
+                  ? `${activeOrg} Organization에서 학번(${studentNo})과 일치하는 과제 저장소를 찾지 못했습니다.`
+                  : "위 입력창에 본인의 학번(예: 22300743)을 입력하여 과제 저장소를 불러오세요."}
+              </p>
+              <p className="mt-1 text-xs text-muted">
+                상단의 <strong>Organization 전환</strong> 기능으로 다른 수업 Organization을 선택하거나, 위의 <strong>[최신 Repo 동기화]</strong>를 눌러 다시 스캔할 수 있습니다.
+              </p>
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }
