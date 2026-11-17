@@ -20,75 +20,70 @@ export default function DashboardLoading() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      {/* Top Navbar Placeholder */}
-      <header className="sticky top-0 z-40 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2 font-bold text-base tracking-tight">
-            <GitBranch className="w-5 h-5 text-blue-600" />
-            <span>GitRepoTrack</span>
+    <div className="min-h-screen bg-surface font-display text-ink">
+      <div className="mx-auto flex max-w-[1600px] flex-col gap-6 p-4 sm:p-6 lg:flex-row lg:gap-10 lg:pr-10">
+        {/* 사이드바 자리 */}
+        <aside className="flex flex-col gap-6 rounded-[28px] bg-surface p-5 shadow-neu lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)] lg:w-64 lg:shrink-0">
+          <div className="flex items-center gap-2 px-1">
+            <GitBranch className="h-5 w-5 text-lilac-ink" />
+            <span className="text-sm font-bold uppercase tracking-[0.18em]">GitRepoTrack</span>
           </div>
-        </div>
-      </header>
+          <div className="space-y-3 animate-pulse">
+            <div className="h-10 rounded-2xl shadow-neu-inset" />
+            <div className="h-10 rounded-2xl shadow-neu-inset" />
+          </div>
+        </aside>
 
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 space-y-6">
-        <div className="rounded-2xl border border-blue-200 dark:border-blue-900/60 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-sm">
-          <div className="mx-auto max-w-md text-center space-y-4">
-            <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 dark:bg-blue-950/80 px-4 py-1.5 text-xs font-bold text-blue-700 dark:text-blue-300 ring-1 ring-blue-500/20">
-              <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-              <span>내 과제 목록 불러오는 중...</span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-white dark:bg-slate-900 px-2 py-0.5 font-mono text-[11px] text-blue-600 dark:text-blue-400 shadow-2xs">
-                <Clock className="w-3 h-3" />
-                {(elapsedMs / 1000).toFixed(1)}초 경과
-              </span>
-            </div>
+        <main className="min-w-0 flex-1 space-y-8 lg:py-6">
+          <div className="rounded-[28px] bg-surface p-6 sm:p-8 shadow-neu">
+            <div className="mx-auto max-w-md text-center space-y-4">
+              <div className="inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-xs font-semibold shadow-neu-inset">
+                <Loader2 className="w-4 h-4 animate-spin text-lilac-ink" />
+                <span>내 과제 목록 불러오는 중...</span>
+                <span className="inline-flex items-center gap-1 font-mono text-[11px] text-muted">
+                  <Clock className="w-3 h-3" />
+                  {(elapsedMs / 1000).toFixed(1)}초 경과
+                </span>
+              </div>
 
-            <div className="space-y-1">
-              <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-                {elapsedMs < 700
-                  ? "1/2단계: 학생 계정 및 Organization 연동 정보 확인 중..."
-                  : "2/2단계: 과제별 커밋·README 검사 상태 및 마감 기한 집계 중..."}
-              </p>
-              <p className="text-[11px] text-slate-400">
-                최신 제출 현황 데이터를 준비하고 있습니다. 잠시만 기다려주세요!
-              </p>
-            </div>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold">
+                  {elapsedMs < 700
+                    ? "1/2단계: 학생 계정 및 Organization 연동 정보 확인 중..."
+                    : "2/2단계: 과제별 커밋·README 검사 상태 및 마감 기한 집계 중..."}
+                </p>
+                <p className="text-[11px] text-muted">
+                  최신 제출 현황 데이터를 준비하고 있습니다. 잠시만 기다려주세요!
+                </p>
+              </div>
 
-            <div
-              role="progressbar"
-              aria-valuenow={progress}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden"
-            >
               <div
-                className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 transition-all duration-150 ease-out"
-                style={{ width: `${progress}%` }}
-              />
+                role="progressbar"
+                aria-valuenow={progress}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                className="w-full h-2 rounded-full shadow-neu-inset overflow-hidden"
+              >
+                <div
+                  className="h-full rounded-full bg-accent transition-all duration-150 ease-out"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Skeleton Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-pulse">
-          {[1, 2, 3, 4].map((i) => (
-            <div
-              key={i}
-              className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 space-y-4"
-            >
-              <div className="flex justify-between">
-                <div className="h-4 w-44 rounded bg-slate-200 dark:bg-slate-800" />
-                <div className="h-5 w-20 rounded-full bg-slate-100 dark:bg-slate-800" />
-              </div>
-              <div className="h-20 rounded-lg bg-slate-100 dark:bg-slate-800/60" />
-              <div className="flex justify-between pt-2">
-                <div className="h-4 w-20 rounded bg-slate-100 dark:bg-slate-800" />
-                <div className="h-7 w-24 rounded-lg bg-slate-200 dark:bg-slate-800" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </main>
+          {/* 카드 스켈레톤: 날짜 · 달성률 · 이번주 과제 / 과제 목록 · Goals */}
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,2.4fr)] animate-pulse">
+            <div className="h-56 rounded-[28px] bg-surface shadow-neu" />
+            <div className="h-56 rounded-[28px] bg-surface shadow-neu" />
+            <div className="h-56 rounded-[28px] bg-surface shadow-neu md:col-span-2 xl:col-span-1" />
+          </div>
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 animate-pulse">
+            <div className="h-80 rounded-[28px] bg-surface shadow-neu" />
+            <div className="h-80 rounded-[28px] bg-surface shadow-neu" />
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
