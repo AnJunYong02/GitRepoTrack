@@ -166,7 +166,7 @@ export function StudentRepoList({ items, topSlot }: StudentRepoListProps) {
   return (
     <section
       aria-label="내 과제 목록"
-      className="flex h-full flex-col rounded-[28px] bg-surface p-6 shadow-neu"
+      className="neu-hover flex h-full flex-col rounded-[28px] bg-surface p-6 shadow-neu"
     >
       {/* 헤더: 제목 + 개수 + 레이아웃 전환 */}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -218,7 +218,7 @@ export function StudentRepoList({ items, topSlot }: StudentRepoListProps) {
             {items.map((item) => (
               <div
                 key={item.id}
-                className="flex flex-col justify-between gap-4 rounded-3xl bg-surface p-5 shadow-neu-sm"
+                className="neu-hover-sm flex flex-col justify-between gap-4 rounded-3xl bg-surface p-5 shadow-neu-sm"
               >
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">

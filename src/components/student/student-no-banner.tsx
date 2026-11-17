@@ -78,7 +78,7 @@ export function StudentNoBanner({
   };
 
   return (
-    <div className="rounded-[28px] bg-surface p-5 sm:p-6 shadow-neu space-y-3">
+    <div className="neu-hover rounded-[28px] bg-surface p-5 sm:p-6 shadow-neu space-y-3">
       {linkedStudentNo ? (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">

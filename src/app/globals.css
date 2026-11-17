@@ -46,6 +46,43 @@
   --neu-dark: 18 17 16;
 }
 
+@layer components {
+  /* 카드 hover: 살짝 떠오르고 주변이 보라빛으로 은은하게 빛남 */
+  .neu-hover {
+    transition:
+      transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 300ms ease;
+  }
+  .neu-hover:hover {
+    transform: translateY(-4px);
+    box-shadow:
+      14px 16px 30px rgb(var(--neu-dark) / 0.5),
+      -10px -10px 24px rgb(var(--neu-light) / 0.9),
+      0 0 0 1px rgb(var(--neu-light) / 0.55),
+      0 0 56px rgb(var(--violet-ink) / 0.16);
+  }
+  /* 카드 안의 작은 카드용 (덜 움직이고 덜 빛남) */
+  .neu-hover-sm {
+    transition:
+      transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 300ms ease;
+  }
+  .neu-hover-sm:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      6px 8px 16px rgb(var(--neu-dark) / 0.45),
+      -4px -4px 10px rgb(var(--neu-light) / 0.9),
+      0 0 32px rgb(var(--violet-ink) / 0.14);
+  }
+  /* 움직임 줄이기 설정을 켠 사용자는 이동 없이 빛만 */
+  @media (prefers-reduced-motion: reduce) {
+    .neu-hover:hover,
+    .neu-hover-sm:hover {
+      transform: none;
+    }
+  }
+}
+
 body {
   color: var(--foreground);
   background: var(--background);

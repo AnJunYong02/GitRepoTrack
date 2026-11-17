@@ -103,7 +103,7 @@ function DateCard({ nowMs }: { nowMs: number }) {
   const weekday = new Intl.DateTimeFormat("ko-KR", { weekday: "long", timeZone: SEOUL_TZ }).format(now);
 
   return (
-    <section aria-label="오늘 날짜" className={`${CARD} flex flex-col items-center justify-center gap-1 p-6`}>
+    <section aria-label="오늘 날짜" className={`${CARD} neu-hover flex flex-col items-center justify-center gap-1 p-6`}>
       <span className="text-7xl font-light leading-none tracking-tight text-ink">{day}</span>
       <span className="mt-2 text-xs font-semibold tracking-[0.16em] text-muted">{monthYear}</span>
       <span className="text-xs text-muted">{weekday}</span>
@@ -119,7 +119,7 @@ function ProgressRingCard({ stats }: { stats: AssignmentStats }) {
   const dash = ((percent ?? 0) / 100) * circumference;
 
   return (
-    <section aria-label="이번주 과제 달성률" className={`${CARD} flex items-center justify-center p-5`}>
+    <section aria-label="이번주 과제 달성률" className={`${CARD} neu-hover flex items-center justify-center p-5`}>
       <div className="relative flex h-44 w-44 items-center justify-center rounded-full shadow-neu">
         <svg viewBox="0 0 160 160" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden>
           <circle cx="80" cy="80" r={radius} fill="none" strokeWidth="6" className="stroke-muted/15" />
@@ -212,7 +212,7 @@ export function StudentFocusDashboard({ current, nowMs }: StudentFocusDashboardP
       <ProgressRingCard stats={stats} />
 
       {/* 이번주 과제 */}
-      <section aria-label="이번주 과제" className={`${CARD} p-6 md:col-span-2 xl:col-span-1`}>
+      <section aria-label="이번주 과제" className={`${CARD} neu-hover p-6 md:col-span-2 xl:col-span-1`}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
