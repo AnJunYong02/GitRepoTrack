@@ -35,37 +35,41 @@ export function CommitTimeline({ commits, limit = 10 }: CommitTimelineProps) {
   );
 
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-3">
+    <div className="neu-hover rounded-[28px] bg-surface p-6 shadow-neu space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-sm">최근 커밋 이력</h3>
-        <span className="text-xs text-slate-500">
+        <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/80">최근 커밋 이력</h3>
+        <span className="text-xs text-muted">
           최근 {recent.length}개 / 총 {commits?.length || 0}개
         </span>
       </div>
 
       {recent.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-200 dark:border-slate-800 p-6 text-center text-xs text-slate-400">
+        <div className="rounded-2xl p-6 text-center text-xs text-muted shadow-neu-inset">
           기록된 커밋 내역이 없습니다.
         </div>
       ) : (
-        <ol className="relative space-y-3 border-l border-slate-200 dark:border-slate-700 ml-2 max-h-[420px] overflow-y-auto pr-1">
+        <ol className="max-h-[420px] overflow-y-auto pr-1">
           {recent.map((c, idx) => {
             const { title, body } = splitCommitMessage(c.message);
             const relative = nowMs !== null ? formatRelativeTime(c.committed_at, nowMs) : null;
             return (
-              <li key={`${c.committed_at}-${idx}`} className="ml-4 space-y-0.5">
-                <span className="absolute -left-[9px] flex h-[18px] w-[18px] items-center justify-center rounded-full bg-white dark:bg-slate-900 ring-1 ring-slate-300 dark:ring-slate-600">
-                  <GitCommit className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+              <li key={`${c.committed_at}-${idx}`} className="relative space-y-0.5 pb-4 pl-9 last:pb-0">
+                {/* 세로 선 (마지막 항목은 생략) */}
+                {idx < recent.length - 1 && (
+                  <span className="absolute left-[11px] top-6 bottom-0 w-px bg-muted/25" aria-hidden />
+                )}
+                <span className="absolute left-0 top-0 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-lilac">
+                  <GitCommit className="w-3 h-3 text-lilac-ink" />
                 </span>
-                <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 break-words">
+                <p className="text-xs font-medium text-ink break-words">
                   {title}
                 </p>
                 {body && (
-                  <p className="text-[11px] text-slate-500 whitespace-pre-line line-clamp-2 break-words">
+                  <p className="text-[11px] text-muted whitespace-pre-line line-clamp-2 break-words">
                     {body}
                   </p>
                 )}
-                <p className="text-[11px] text-slate-400 font-mono">
+                <p className="text-[11px] text-muted font-mono">
                   {relative ? `${relative} · ` : ""}
                   {formatAbsoluteKst(c.committed_at)}
                 </p>

@@ -41,35 +41,37 @@ export function CommitChart({ commits }: CommitChartProps) {
 
   if (chartData.length === 0) {
     return (
-      <div className="flex h-48 items-center justify-center rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-xs text-slate-400">
+      <div className="neu-hover flex h-48 items-center justify-center rounded-[28px] bg-surface text-xs text-muted shadow-neu">
         기록된 커밋 히스토리가 없습니다.
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-3">
+    <div className="neu-hover rounded-[28px] bg-surface p-6 shadow-neu space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-sm">일자별 커밋 추이 (KST 기준)</h3>
-        <span className="text-xs text-slate-500">총 {commits.length}개 커밋</span>
+        <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/80">일자별 커밋 추이 (KST 기준)</h3>
+        <span className="text-xs text-muted">총 {commits.length}개 커밋</span>
       </div>
-      <div className="h-56 w-full pt-2">
+      <div className="h-56 w-full pt-2 text-lilac-ink">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-            <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} />
-            <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgb(var(--muted) / 0.25)" />
+            <XAxis dataKey="date" tick={{ fontSize: 11, fill: "rgb(var(--muted))" }} tickLine={false} axisLine={false} />
+            <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "rgb(var(--muted))" }} tickLine={false} axisLine={false} />
             <Tooltip
+              cursor={{ fill: "rgb(var(--violet) / 0.35)" }}
               contentStyle={{
-                backgroundColor: "#0f172a",
-                borderRadius: "8px",
+                backgroundColor: "rgb(var(--surface))",
+                borderRadius: "14px",
                 border: "none",
                 fontSize: "12px",
-                color: "#f8fafc",
+                color: "rgb(var(--ink))",
+                boxShadow: "4px 4px 10px rgb(var(--neu-dark) / 0.4), -4px -4px 10px rgb(var(--neu-light) / 0.85)",
               }}
               formatter={(value: any) => [`${value} 커밋`, "커밋 수"]}
             />
-            <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="count" fill="currentColor" radius={[6, 6, 0, 0]} maxBarSize={36} />
           </BarChart>
         </ResponsiveContainer>
       </div>

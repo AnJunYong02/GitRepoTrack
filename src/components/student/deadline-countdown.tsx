@@ -68,30 +68,27 @@ export function DeadlineCountdown({
       : null;
 
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-slate-100 dark:border-slate-800 pt-3">
-      <div className="flex items-center gap-2">
-        <Timer
-          className={`w-5 h-5 ${
-            countdown?.expired ? "text-slate-400" : "text-blue-600 dark:text-blue-400"
-          }`}
-        />
-        <div>
-          <p className="text-[11px] text-slate-500">마감까지</p>
-          <p
-            className={`text-lg font-bold leading-tight ${
-              countdown?.expired
-                ? "text-slate-400"
-                : countdown && countdown.days < 1
-                ? "text-red-600 dark:text-red-400"
-                : "text-slate-900 dark:text-slate-100"
-            }`}
-          >
-            {!deadlineAt ? "마감 없음" : countdown ? countdown.label : "계산 중..."}
-          </p>
-        </div>
-      </div>
+    <section
+      aria-label="마감까지 남은 시간"
+      className="neu-hover flex flex-col items-center justify-center gap-3 rounded-[28px] bg-surface p-6 text-center shadow-neu"
+    >
+      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+        <Timer className="w-3.5 h-3.5" />
+        마감까지
+      </span>
+      <p
+        className={`text-3xl font-light leading-tight tracking-tight sm:text-4xl ${
+          countdown?.expired
+            ? "text-muted"
+            : countdown && countdown.days < 1
+            ? "text-red-600 dark:text-red-400"
+            : "text-ink"
+        }`}
+      >
+        {!deadlineAt ? "마감 없음" : countdown ? countdown.label : "계산 중..."}
+      </p>
 
-      <div className="text-[11px] text-slate-500 space-y-0.5">
+      <div className="space-y-0.5 text-[11px] text-muted">
         {deadlineAt && <p>마감 일시: {formatAbsoluteKst(deadlineAt)} (KST)</p>}
         <p>마지막 커밋: {latestCommit ? `${formatAbsoluteKst(latestCommit)} (KST)` : "-"}</p>
       </div>
@@ -102,6 +99,6 @@ export function DeadlineCountdown({
         <badge.Icon className="w-3.5 h-3.5" />
         <span>{badge.text}</span>
       </span>
-    </div>
+    </section>
   );
 }

@@ -63,9 +63,12 @@ export function ReadmeChecklist({
   const passedCount = passedItems.length;
 
   return (
-    <div className="space-y-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm">
+    <div className="neu-hover space-y-5 rounded-[28px] bg-surface p-6 shadow-neu">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-semibold text-sm">README 필수 키워드 검사 결과</h3>
+        <h3 className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-ink/80">
+          <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+          README 필수 키워드 검사 결과
+        </h3>
         {totalCount > 0 && (
           <span
             className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
@@ -93,15 +96,15 @@ export function ReadmeChecklist({
 
 
       {totalCount === 0 ? (
-        <div className="rounded-lg border border-slate-100 dark:border-slate-800 p-3 text-xs text-slate-500">
+        <div className="rounded-2xl p-4 text-xs text-muted shadow-neu-inset">
           설정된 README 필수 키워드가 없거나 아직 분석 전입니다.
         </div>
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
             {/* Left Column: Passed Items */}
-            <div className="rounded-xl border border-emerald-200/80 dark:border-emerald-900/50 bg-emerald-50/20 dark:bg-emerald-950/10 p-3.5 space-y-2.5">
-              <div className="flex items-center justify-between border-b border-emerald-200/60 dark:border-emerald-900/40 pb-2">
+            <div className="rounded-3xl p-4 space-y-3 shadow-neu-inset">
+              <div className="flex items-center justify-between pb-1">
                 <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   <span>통과 항목</span>
@@ -112,15 +115,15 @@ export function ReadmeChecklist({
               </div>
 
               {passedItems.length === 0 ? (
-                <div className="py-6 text-center text-xs text-slate-400">
+                <div className="py-6 text-center text-xs text-muted">
                   아직 통과한 키워드가 없습니다.
                 </div>
               ) : (
-                <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-[420px] overflow-y-auto p-1">
                   {passedItems.map((item, idx) => (
                     <div
                       key={`${item.keyword}-${idx}`}
-                      className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-emerald-200 bg-white/90 text-emerald-900 dark:border-emerald-900/50 dark:bg-slate-900/80 dark:text-emerald-200 text-xs shadow-2xs"
+                      className="flex items-center justify-between gap-2 rounded-2xl bg-surface p-3 text-xs text-ink shadow-neu-sm"
                     >
                       <span className="font-medium break-all">{item.keyword}</span>
                       <span className="inline-flex items-center gap-1 shrink-0 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
@@ -134,8 +137,8 @@ export function ReadmeChecklist({
             </div>
 
             {/* Right Column: Failed / Unpassed Items */}
-            <div className="rounded-xl border border-red-200/80 dark:border-red-900/50 bg-red-50/20 dark:bg-red-950/10 p-3.5 space-y-2.5">
-              <div className="flex items-center justify-between border-b border-red-200/60 dark:border-red-900/40 pb-2">
+            <div className="rounded-3xl p-4 space-y-3 shadow-neu-inset">
+              <div className="flex items-center justify-between pb-1">
                 <span className="inline-flex items-center gap-1.5 text-xs font-bold text-red-700 dark:text-red-300">
                   <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
                   <span>불통과 항목 (미감지)</span>
@@ -149,7 +152,7 @@ export function ReadmeChecklist({
                 <button
                   type="button"
                   onClick={() => handleCopy("all", failedItems.map((i) => i.keyword))}
-                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-red-300 dark:border-red-800 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-semibold text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-2xl bg-surface px-3 py-2.5 text-xs font-semibold text-red-700 dark:text-red-300 shadow-neu-sm hover:shadow-neu-inset transition"
                 >
                   {copied === "all" ? (
                     <>
@@ -172,7 +175,7 @@ export function ReadmeChecklist({
                   모든 필수 키워드를 통과
                 </div>
               ) : (
-                <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-[420px] overflow-y-auto p-1">
                   {failedItems.map((item, idx) => {
                     const itemKey = `kw:${item.keyword}-${idx}`;
                     const isCopied = copied === itemKey;
@@ -182,7 +185,7 @@ export function ReadmeChecklist({
                         key={`${item.keyword}-${idx}`}
                         title={`클릭하면 "## ${item.keyword}" 양식이 복사됩니다`}
                         onClick={() => handleCopy(itemKey, [item.keyword])}
-                        className="group w-full flex items-center justify-between gap-2 p-2.5 rounded-lg border border-red-200 bg-white/90 text-left text-red-900 dark:border-red-900/50 dark:bg-slate-900/80 dark:text-red-200 text-xs shadow-2xs hover:border-red-400 hover:bg-red-50/70 dark:hover:bg-red-950/30 transition cursor-pointer"
+                        className="group w-full flex items-center justify-between gap-2 rounded-2xl bg-surface p-3 text-left text-ink text-xs shadow-neu-sm hover:shadow-neu-inset transition cursor-pointer"
                       >
                         <span className="font-medium break-all">{item.keyword}</span>
                         {isCopied ? (
@@ -207,9 +210,9 @@ export function ReadmeChecklist({
           </div>
 
           {!satisfied && missingKeywords.length > 0 && (
-            <p className="text-[11px] text-slate-500 pt-1">
+            <p className="text-[11px] text-muted pt-1">
               💡 인식이 안 된 키워드가 있다면 README 파일에 해당 문구(예:{" "}
-              <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">
+              <code className="rounded-md px-1 py-0.5 font-mono shadow-neu-inset">
                 {missingKeywords[0]}
               </code>
               )를 포함해 작성한 뒤 다시 push하고 <strong>[GitHub 새로고침]</strong>을 눌러보세요.
@@ -218,11 +221,11 @@ export function ReadmeChecklist({
         </>
       )}
         {/* Accuracy Notice Box */}
-        <div className="flex items-start gap-2 rounded-lg border border-blue-200/80 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/30 p-3 text-xs text-blue-800 dark:text-blue-200">
-            <Info className="w-4 h-4 shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
+        <div className="flex items-start gap-2 rounded-2xl p-4 text-xs text-ink shadow-neu-inset">
+            <Info className="w-4 h-4 shrink-0 mt-0.5 text-lilac-ink" />
             <div className="space-y-0.5 leading-relaxed">
                 <p className="font-semibold">README 키워드 분석 기준</p>
-                <p className="text-[11px] text-blue-700/90 dark:text-blue-300/90">
+                <p className="text-[11px] text-muted">
                     README 어디에든 키워드 문구가 포함되어 있으면 충족으로 판정합니다. (대소문자·띄어쓰기 무시)<br/>
                     철자나 특수문자가 다르면 감지되지 않을 수 있으니 키워드를 그대로 적어주세요.
                 </p>
