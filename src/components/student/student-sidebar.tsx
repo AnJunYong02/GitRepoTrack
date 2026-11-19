@@ -18,7 +18,8 @@ import {
 import { SIDEBAR_COOKIE } from "@/components/student/sidebar-cookie";
 
 export interface StudentSidebarProps {
-  activeOrg: string;
+  /** 현재 Organization (없으면 Organization 선택 화면: 메뉴는 "Organization 선택"만) */
+  activeOrg?: string;
   orgAvatarUrl?: string | null;
   isOwner: boolean;
   githubLogin?: string | null;
@@ -73,8 +74,10 @@ export function StudentSidebar({
   const c = collapsed;
   const hideWhenCollapsed = c ? "lg:hidden" : "";
   const centerWhenCollapsed = c ? "lg:justify-center lg:px-0" : "";
-  const dashboardHref = `/dashboard?org=${encodeURIComponent(activeOrg)}`;
-  const orgGithubHref = `https://github.com/${encodeURIComponent(activeOrg)}`;
+  const org = activeOrg ?? "";
+  const hasOrg = Boolean(org);
+  const dashboardHref = `/dashboard?org=${encodeURIComponent(org)}`;
+  const orgGithubHref = `https://github.com/${encodeURIComponent(org)}`;
 
   return (
     <div
@@ -108,6 +111,19 @@ export function StudentSidebar({
             <p className={`${SECTION_LABEL} ${hideWhenCollapsed}`}>Workspace</p>
             {c && <div className="mx-auto hidden h-px w-8 bg-muted/25 lg:block" aria-hidden />}
             <div className="flex gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">
+              {!hasOrg ? (
+                <Link
+                  href="/dashboard"
+                  aria-current="page"
+                  aria-label="Organization 선택"
+                  className={`${NAV_ITEM_ACTIVE} shrink-0 ${centerWhenCollapsed}`}
+                >
+                  <Repeat2 className="h-[18px] w-[18px] shrink-0" />
+                  <span className={hideWhenCollapsed}>Organization 선택</span>
+                  <Tip show={c}>Organization 선택</Tip>
+                </Link>
+              ) : (
+              <>
               <Link
                 href={dashboardHref}
                 aria-current={active === "dashboard" ? "page" : undefined}
@@ -128,15 +144,17 @@ export function StudentSidebar({
                 <span className={hideWhenCollapsed}>Organization 변경</span>
                 <Tip show={c}>Organization 변경</Tip>
               </Link>
+              </>
+              )}
             </div>
           </div>
 
-          {isOwner && (
+          {isOwner && hasOrg && (
             <div className="space-y-2">
               <p className={`${SECTION_LABEL} ${hideWhenCollapsed}`}>Management</p>
               {c && <div className="mx-auto hidden h-px w-8 bg-muted/25 lg:block" aria-hidden />}
               <Link
-                href={`/admin?org=${encodeURIComponent(activeOrg)}`}
+                href={`/admin?org=${encodeURIComponent(org)}`}
                 aria-label="관리자 대시보드"
                 className={`${NAV_ITEM} ${centerWhenCollapsed}`}
               >
@@ -148,7 +166,8 @@ export function StudentSidebar({
           )}
         </nav>
 
-        {/* 현재 Organization */}
+        {/* 현재 Organization (Organization 선택 화면에서는 숨김) */}
+        {hasOrg && (
         <div className="space-y-2">
           <p className={`${SECTION_LABEL} ${hideWhenCollapsed}`}>Organization</p>
           {c && <div className="mx-auto hidden h-px w-8 bg-muted/25 lg:block" aria-hidden />}
@@ -162,7 +181,7 @@ export function StudentSidebar({
               aria-label={`${activeOrg} GitHub Organization 페이지 새 창으로 열기`}
               className="group relative mx-auto hidden h-11 w-11 items-center justify-center rounded-2xl shadow-neu-inset lg:flex"
             >
-              <OrgAvatar url={orgAvatarUrl} name={activeOrg} />
+              <OrgAvatar url={orgAvatarUrl} name={org} />
               {isOwner && (
                 <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
                   <Shield className="h-2.5 w-2.5" />
@@ -177,7 +196,7 @@ export function StudentSidebar({
 
           {/* 펼친 상태 (모바일은 항상 이 모양) */}
           <div className={`flex items-center gap-3 rounded-2xl p-3 shadow-neu-inset ${hideWhenCollapsed}`}>
-            <OrgAvatar url={orgAvatarUrl} name={activeOrg} />
+            <OrgAvatar url={orgAvatarUrl} name={org} />
             <div className="min-w-0 space-y-1">
               <p className="truncate text-sm font-semibold text-ink" title={activeOrg}>
                 {activeOrg}
@@ -203,6 +222,7 @@ export function StudentSidebar({
             </div>
           </div>
         </div>
+        )}
 
         {/* 하단: 과제 상태 + 프로필 */}
         <div className={`mt-auto space-y-4 ${c ? "lg:w-full" : ""}`}>

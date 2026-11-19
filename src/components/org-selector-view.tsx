@@ -28,22 +28,20 @@ interface OrgSelectorViewProps {
 const ORG_SLUG_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,99}$/;
 
 function OrgAvatar({ org, size }: { org: OrganizationOption; size: "sm" | "lg" }) {
-  const box = size === "lg" ? "h-12 w-12 rounded-xl" : "h-9 w-9 rounded-lg";
+  const box = size === "lg" ? "h-12 w-12 rounded-2xl" : "h-9 w-9 rounded-xl";
   if (org.avatarUrl) {
     return (
       <img
         src={org.avatarUrl}
         alt={org.name}
-        className={`${box} border border-slate-200 dark:border-slate-700 shrink-0`}
+        className={`${box} shrink-0 shadow-neu-sm`}
       />
     );
   }
   return (
     <div
       className={`${box} flex items-center justify-center shrink-0 ${
-        org.isOwner
-          ? "bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400"
-          : "bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400"
+        "bg-lilac text-lilac-ink"
       }`}
     >
       <Building2 className={size === "lg" ? "w-6 h-6" : "w-4 h-4"} />
@@ -235,19 +233,19 @@ export function OrgSelectorView({
   return (
     <div className="space-y-6">
       {/* 헤더 + 내 GitHub Organization 목록 */}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-sm space-y-5">
+      <div className="neu-hover rounded-[28px] bg-surface p-6 sm:p-8 shadow-neu space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 dark:bg-indigo-950/70 px-3 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-lilac px-3 py-1 text-xs font-semibold text-lilac-ink">
               <Building2 className="w-3.5 h-3.5" />
               <span>
                 {githubLogin ? `@${githubLogin} 계정 연동` : "GitHub 계정 연동"} · 수업 Organization 선택
               </span>
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+            <h2 className="pt-1 text-2xl font-normal tracking-tight text-ink">
               내 GitHub Organization
-            </h1>
-            <p className="text-xs text-slate-500">
+            </h2>
+            <p className="text-sm text-muted">
               사용할 Organization을 <strong>등록</strong>하면 아래에 대시보드 입장 카드가 생깁니다.
             </p>
           </div>
@@ -256,9 +254,9 @@ export function OrgSelectorView({
             type="button"
             onClick={handleReconnectGitHub}
             disabled={isBusy}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs font-semibold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-slate-800 transition shrink-0 disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-1.5 shrink-0 rounded-2xl bg-surface px-4 py-2.5 text-xs font-semibold text-ink shadow-neu-sm transition hover:shadow-neu-inset disabled:opacity-50"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isReconnecting ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 text-lilac-ink ${isReconnecting ? "animate-spin" : ""}`} />
             <span>GitHub 다시 연결 (목록 새로고침)</span>
           </button>
         </div>
@@ -266,7 +264,7 @@ export function OrgSelectorView({
         {/* 검색 + 이름으로 직접 등록 */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
             <input
               type="text"
               aria-label="GitHub Organization 이름 검색"
@@ -280,13 +278,13 @@ export function OrgSelectorView({
                 }
               }}
               placeholder="Organization 이름 검색 또는 입력 (예: 2026-2-WebService)"
-              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 py-2 pl-10 pr-16 text-xs placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition"
+              className="w-full rounded-2xl border-0 bg-transparent py-3 pl-11 pr-16 text-sm text-ink placeholder:text-muted shadow-neu-inset focus:outline-none focus:ring-2 focus:ring-lilac-ink/30 transition"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-2 text-xs text-slate-400 hover:text-slate-600"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-muted hover:text-ink"
               >
                 지우기
               </button>
@@ -296,7 +294,7 @@ export function OrgSelectorView({
             type="button"
             onClick={handleSearch}
             disabled={isScanning || isBusy}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition shrink-0 disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-1.5 shrink-0 rounded-2xl bg-surface px-4 py-2.5 text-xs font-semibold text-ink shadow-neu-sm transition hover:shadow-neu-inset disabled:opacity-50"
           >
             {isScanning ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -310,31 +308,31 @@ export function OrgSelectorView({
               type="button"
               onClick={() => handleRegister(trimmedQuery)}
               disabled={isBusy}
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500 transition shrink-0 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-1.5 shrink-0 rounded-2xl bg-surface px-4 py-2.5 text-xs font-semibold text-ink shadow-neu-sm transition hover:shadow-neu-inset disabled:opacity-50"
             >
-              <PlusCircle className="w-3.5 h-3.5" />
+              <PlusCircle className="w-3.5 h-3.5 text-lilac-ink" />
               <span>&ldquo;{trimmedQuery}&rdquo; 등록</span>
             </button>
           )}
         </div>
 
         {infoMsg && (
-          <div className="flex items-center gap-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 p-3 text-xs text-emerald-700 dark:text-emerald-300">
+          <div className="flex items-center gap-2 rounded-2xl p-3 text-xs text-emerald-700 shadow-neu-inset dark:text-emerald-300">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{infoMsg}</span>
           </div>
         )}
         {errorMsg && (
-          <div className="flex items-center gap-2 rounded-xl bg-red-50 dark:bg-red-950/60 p-3 text-xs text-red-600 dark:text-red-300">
+          <div className="flex items-center gap-2 rounded-2xl p-3 text-xs text-red-600 shadow-neu-inset dark:text-red-300">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errorMsg}</span>
           </div>
         )}
 
         {/* GitHub 설정 화면처럼 행 목록 */}
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
+        <div className="overflow-hidden rounded-3xl px-2 shadow-neu-inset divide-y divide-muted/15">
           {listedOrganizations.length === 0 ? (
-            <p className="p-5 text-center text-xs text-slate-500">
+            <p className="p-5 text-center text-xs text-muted">
               {trimmedQuery
                 ? `"${trimmedQuery}"와(과) 일치하는 Organization이 없습니다.`
                 : "불러온 Organization이 없습니다."}
@@ -345,7 +343,7 @@ export function OrgSelectorView({
               return (
                 <div
                   key={org.name}
-                  className="flex items-center justify-between gap-3 px-4 py-3 bg-white dark:bg-slate-900"
+                  className="flex items-center justify-between gap-3 px-3 py-3"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <OrgAvatar org={org} size="sm" />
@@ -354,7 +352,7 @@ export function OrgSelectorView({
                         href={org.htmlUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-sm font-bold text-slate-900 dark:text-slate-100 hover:text-indigo-600 truncate"
+                        className="truncate text-sm font-semibold text-ink hover:text-lilac-ink hover:underline"
                       >
                         {org.name}
                       </a>
@@ -363,7 +361,7 @@ export function OrgSelectorView({
                   </div>
 
                   {org.isRegistered ? (
-                    <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 shrink-0">
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-100/70 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
                       <CheckCircle2 className="w-3.5 h-3.5" />
                       <span>등록됨</span>
                     </span>
@@ -372,12 +370,12 @@ export function OrgSelectorView({
                       type="button"
                       onClick={() => handleRegister(org.name)}
                       disabled={isBusy}
-                      className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 transition shrink-0 disabled:opacity-50"
+                      className="inline-flex shrink-0 items-center gap-1 rounded-2xl bg-surface px-3.5 py-2 text-xs font-semibold text-ink shadow-neu-sm transition hover:shadow-neu-inset disabled:opacity-50"
                     >
                       {isThisBusy ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       ) : (
-                        <PlusCircle className="w-3.5 h-3.5" />
+                        <PlusCircle className="w-3.5 h-3.5 text-lilac-ink" />
                       )}
                       <span>등록</span>
                     </button>
@@ -388,8 +386,8 @@ export function OrgSelectorView({
           )}
         </div>
 
-        <div className="flex items-start gap-2 rounded-xl bg-slate-50 dark:bg-slate-950/60 p-3 text-[11px] text-slate-600 dark:text-slate-400">
-          <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-2 rounded-2xl p-4 text-xs leading-relaxed text-muted shadow-neu-inset">
+          <Info className="w-4 h-4 shrink-0 mt-0.5 text-lilac-ink" />
           <p>
             속한 Organization이 목록에 없다면, 해당 Organization이 외부 앱 접근을 제한하고 있기 때문입니다. <br/>
             GitHub → Settings → Applications → Authorized OAuth Apps에서 이 서비스를 선택한 뒤{" "}
@@ -400,40 +398,40 @@ export function OrgSelectorView({
       </div>
 
       {/* 등록된 Organization 카드 */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-bold text-slate-700 dark:text-slate-200">
-          등록된 Organization ({registeredOrganizations.length})
+      <div className="space-y-4">
+        <h2 className="inline-flex items-center gap-2 text-base font-semibold tracking-wide text-ink">
+          <span className="h-2 w-2 rounded-full bg-accent" />
+          등록된 Organization
+          <span className="text-sm font-medium tracking-normal text-muted">({registeredOrganizations.length})</span>
         </h2>
 
         {registeredOrganizations.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 p-10 text-center text-xs text-slate-500">
+          <div className="rounded-[28px] p-10 text-center text-sm text-muted shadow-neu-inset">
             등록된 Organization이 없습니다. 위 목록에서 <strong>등록</strong>을 눌러주세요.
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             {registeredOrganizations.map((org) => {
               const isThisBusy = busyOrg?.toLowerCase() === org.name.toLowerCase();
               return (
                 <div
                   key={org.name}
-                  className={`group relative rounded-2xl border p-5 sm:p-6 bg-white dark:bg-slate-900 shadow-sm transition flex flex-col justify-between gap-4 ${
-                    org.isOwner
-                      ? "border-indigo-200/80 dark:border-indigo-900/60 hover:border-indigo-500 hover:shadow-md"
-                      : "border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:shadow-md"
-                  } ${busyOrg && !isThisBusy ? "opacity-50" : ""}`}
+                  className={`neu-hover group relative rounded-[28px] bg-surface p-6 shadow-neu ${
+                    busyOrg && !isThisBusy ? "opacity-50" : ""
+                  }`}
                 >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
                         <OrgAvatar org={org} size="lg" />
                         <div className="min-w-0">
-                          <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 truncate">
+                          <h3 className="truncate text-lg font-semibold text-ink">
                             {org.name}
                           </h3>
                           <div className="flex flex-wrap items-center gap-1.5 mt-1">
                             <RoleBadge isOwner={org.isOwner} />
                             {org.assignmentCount > 0 && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:text-slate-300">
+                              <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium text-ink/80 shadow-neu-inset">
                                 <FolderGit2 className="w-3 h-3" />
                                 <span>등록된 과제 {org.assignmentCount}개</span>
                               </span>
@@ -442,12 +440,14 @@ export function OrgSelectorView({
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-0.5 shrink-0">
+                      {/* 오른쪽: 위 GitHub 열기·삭제, 바로 아래 입장 버튼 */}
+                      <div className="flex shrink-0 flex-col items-end gap-2">
+                      <div className="flex items-center gap-0.5">
                         <a
                           href={org.htmlUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 transition"
+                          className="rounded-xl p-2 text-muted transition hover:text-ink hover:shadow-neu-sm"
                           title="GitHub Organization 페이지 열기"
                         >
                           <ExternalLink className="w-4 h-4" />
@@ -458,44 +458,39 @@ export function OrgSelectorView({
                           disabled={isBusy}
                           aria-label={`${org.name} 대시보드 목록에서 삭제`}
                           title="대시보드 목록에서 삭제"
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 dark:hover:bg-red-950/50 hover:text-red-600 transition disabled:opacity-50"
+                          className="rounded-xl p-2 text-muted transition hover:text-red-600 hover:shadow-neu-sm disabled:opacity-50"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                    </div>
-
-                    {org.description && (
-                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
-                        {org.description}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                    <button
+                      <button
                       type="button"
                       disabled={isBusy}
                       onClick={() => handleEnter(org)}
-                      className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-semibold text-white transition shrink-0 disabled:opacity-60 ${
-                        org.isOwner
-                          ? "bg-indigo-600 hover:bg-indigo-500"
-                          : "bg-blue-600 hover:bg-blue-500"
-                      }`}
+                      className="inline-flex shrink-0 items-center gap-1.5 rounded-2xl bg-surface px-4 py-2.5 text-xs font-semibold text-ink shadow-neu-sm transition hover:shadow-neu-inset disabled:opacity-60"
                     >
                       {isThisBusy ? (
                         <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-lilac-ink" />
                           <span>처리 중...</span>
                         </>
                       ) : (
                         <>
                           <span>{org.isOwner ? "관리자 대시보드 입장" : "과제 목록 입장"}</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
+                          <ArrowRight className="w-3.5 h-3.5 text-lilac-ink" />
                         </>
                       )}
                     </button>
+                      </div>
+                    </div>
+
+                    {org.description && (
+                      <p className="line-clamp-2 text-xs text-muted">
+                        {org.description}
+                      </p>
+                    )}
                   </div>
+
                 </div>
               );
             })}

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Navbar } from "@/components/navbar";
 import { requireUser } from "@/lib/auth/guards";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { resolveStudentNo, syncReposForStudent } from "@/lib/student/sync-student-repos";
@@ -83,14 +82,34 @@ export default async function DashboardPage({
   // Step 1: When entering /dashboard without ?org=..., show the Organization Selection Page first
   if (!hasExplicitOrg) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-        <Navbar />
-        <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-          <OrgSelectorView
-            organizations={organizations}
+      <div className="min-h-screen bg-surface font-display text-ink">
+        <div className="mx-auto flex max-w-[1600px] flex-col gap-6 p-4 sm:p-6 lg:flex-row lg:gap-10 lg:pr-10">
+          {/* Organization 선택 화면: 사이드바 메뉴는 "Organization 선택"만 */}
+          <StudentSidebar
+            isOwner={false}
             githubLogin={profile?.github_login}
+            avatarUrl={profile?.avatar_url}
+            active="none"
+            defaultCollapsed={(await cookies()).get(SIDEBAR_COOKIE)?.value === "collapsed"}
           />
-        </main>
+
+          <main className="min-w-0 flex-1 space-y-8 lg:py-6">
+            <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h1 className="text-3xl font-normal tracking-tight text-ink sm:text-4xl">
+                  {profile?.github_login ? `${profile.github_login}님, 안녕하세요.` : "안녕하세요."}
+                </h1>
+              </div>
+              {/* 라이트/다크 모드 전환 */}
+              <ThemeToggle />
+            </header>
+
+            <OrgSelectorView
+              organizations={organizations}
+              githubLogin={profile?.github_login}
+            />
+          </main>
+        </div>
       </div>
     );
   }
