@@ -305,8 +305,9 @@ export default async function DashboardPage({
 
         <main className="min-w-0 flex-1 space-y-8 lg:py-6">
           {/* 헤더: 인사 + Organization 전환 + (Owner) 관리자 대시보드 */}
-          <header className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-            <div>
+          {/* 헤더: 인사말 | (학번 등록 후) 내 학번·동기화 | 버튼들 */}
+          <header className="flex flex-col gap-5 lg:flex-row lg:flex-wrap lg:items-start lg:justify-between lg:gap-x-6">
+            <div className="shrink-0">
               <h1 className="text-3xl font-normal tracking-tight text-ink sm:text-4xl">
                 {profile?.github_login ? `${profile.github_login}님, 안녕하세요.` : "안녕하세요."}
               </h1>
@@ -315,7 +316,18 @@ export default async function DashboardPage({
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+            {studentNo && (
+              <div className="flex flex-1 justify-center lg:pt-1">
+                <StudentNoBanner
+                  initialStudentNo={studentNo}
+                  repoCount={repoItems.length}
+                  activeOrg={activeOrg}
+                  variant="inline"
+                />
+              </div>
+            )}
+
+            <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-start lg:ml-auto">
               <OrganizationSwitcher
                 activeOrg={activeOrg}
                 organizations={organizations}
@@ -340,12 +352,14 @@ export default async function DashboardPage({
             </div>
           </header>
 
-          {/* Student Number Binding & Org Repo Sync Banner */}
-          <StudentNoBanner
-            initialStudentNo={studentNo}
-            repoCount={repoItems.length}
-            activeOrg={activeOrg}
-          />
+          {/* 학번 등록 전에만: 최초 학번 입력 카드 (등록 후에는 헤더 가운데로 이동) */}
+          {!studentNo && (
+            <StudentNoBanner
+              initialStudentNo={studentNo}
+              repoCount={repoItems.length}
+              activeOrg={activeOrg}
+            />
+          )}
 
           {repoItems.length > 0 ? (
             <>
@@ -373,7 +387,7 @@ export default async function DashboardPage({
                   : "위 입력창에 본인의 학번(예: 22300743)을 입력하여 과제 저장소를 불러오세요."}
               </p>
               <p className="mt-1 text-xs text-muted">
-                상단의 <strong>Organization 전환</strong> 기능으로 다른 수업 Organization을 선택하거나, 위의 <strong>[최신 Repo 동기화]</strong>를 눌러 다시 스캔할 수 있습니다.
+                상단의 <strong>Organization 전환</strong> 기능으로 다른 수업 Organization을 선택하거나, 위쪽의 <strong>[최신 Repo 동기화]</strong>를 눌러 다시 스캔할 수 있습니다.
               </p>
             </div>
           )}

@@ -8,12 +8,18 @@ interface StudentNoBannerProps {
   initialStudentNo: string | null;
   repoCount: number;
   activeOrg?: string;
+  /**
+   * card: 본문 카드 (학번 등록 전 입력 폼 포함, 기본값)
+   * inline: 학번 등록 후에만 헤더 가운데에 들어가는 납작한 모양 (등록 전이면 아무것도 그리지 않음)
+   */
+  variant?: "card" | "inline";
 }
 
 export function StudentNoBanner({
   initialStudentNo,
   repoCount,
   activeOrg = "2026-2-WebService",
+  variant = "card",
 }: StudentNoBannerProps) {
   const router = useRouter();
   const [linkedStudentNo, setLinkedStudentNo] = useState<string | null>(initialStudentNo);
@@ -76,6 +82,79 @@ export function StudentNoBanner({
       setLoading(false);
     }
   };
+
+  // 동기화 진행 표시용 값 (card·inline 공통)
+  const stepText =
+    elapsedMs < 800
+      ? `1/2단계: ${activeOrg} Organization 연결 확인 중...`
+      : `2/2단계: 학번(${linkedStudentNo || studentNoInput})과 일치하는 최신 과제 저장소 동기화 중...`;
+  const progressPercent = Math.min(94, Math.max(15, Math.round((1 - Math.exp(-elapsedMs / 1200)) * 95)));
+
+  if (variant === "inline") {
+    if (!linkedStudentNo) return null;
+    return (
+      <div className="flex w-fit max-w-full flex-col items-center gap-2">
+        {/* 납작한 알약: 학번 + 최신 Repo 동기화 */}
+        <div className="flex items-center gap-2 rounded-full bg-surface p-1.5 shadow-neu-sm">
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-lilac text-lilac-ink"
+            title="내 학번"
+            aria-hidden
+          >
+            <GraduationCap className="h-4 w-4" />
+          </span>
+          <span
+            className="rounded-full px-3 py-1 text-sm font-semibold tracking-wide text-ink shadow-neu-inset"
+            aria-label={`내 학번 ${linkedStudentNo}`}
+          >
+            {linkedStudentNo}
+          </span>
+          <button
+            type="button"
+            onClick={() => handleSync(linkedStudentNo)}
+            disabled={loading}
+            title={`학번 ${linkedStudentNo} 기준으로 ${activeOrg} 저장소를 다시 불러오기`}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-surface px-4 py-2 text-xs font-semibold text-ink shadow-neu-sm transition hover:shadow-neu-inset disabled:opacity-70"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin text-lilac-ink" : ""}`} />
+            <span>{loading ? `새로고침 중... (${(elapsedMs / 1000).toFixed(1)}초)` : "최신 Repo 동기화"}</span>
+          </button>
+        </div>
+
+        {loading && (
+          <div className="w-full space-y-1 px-2" role="status">
+            <p className="text-center text-[11px] text-muted">
+              {stepText} ({(elapsedMs / 1000).toFixed(1)}초)
+            </p>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/15">
+              <div
+                className="h-full rounded-full bg-accent transition-all duration-150 ease-out"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {feedback && (
+          <p
+            role="status"
+            className={`flex items-center gap-1.5 px-2 text-center text-[11px] ${
+              feedback.type === "success"
+                ? "text-emerald-700 dark:text-emerald-300"
+                : "text-red-700 dark:text-red-300"
+            }`}
+          >
+            {feedback.type === "success" ? (
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+            ) : (
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            )}
+            <span>{feedback.text}</span>
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="neu-hover rounded-[28px] bg-surface p-5 sm:p-6 shadow-neu space-y-3">
