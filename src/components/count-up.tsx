@@ -17,7 +17,7 @@ interface CountUpProps {
  * 페이지에 들어오거나 다른 화면에서 돌아올 때마다 다시 마운트되므로 매번 재생된다.
  * 첫 렌더는 0이라 서버 HTML과 같고(hydration 경고 없음), 움직임 줄이기 설정이면 바로 최종 값.
  */
-export function CountUp({ value, durationMs = 800, className = "", doneClassName = "" }: CountUpProps) {
+export function CountUp({ value, durationMs = 1000, className = "", doneClassName = "" }: CountUpProps) {
   const target = Math.max(0, Math.round(value));
   const [display, setDisplay] = useState(0);
   const [done, setDone] = useState(target === 0);

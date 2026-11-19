@@ -192,7 +192,7 @@ export function StudentFocusDashboard({ current, nowMs }: StudentFocusDashboardP
       ? "fail"
       : undefined;
   const commitEffect = !stats.analyzed ? undefined : stats.commit.satisfied ? "success" : "fail";
-  const COUNT_UP_MS = 800;
+  const COUNT_UP_MS = 1000;
 
   return (
     <section aria-label="이번주 과제" className={`${CARD} neu-hover p-6 sm:p-8`}>
