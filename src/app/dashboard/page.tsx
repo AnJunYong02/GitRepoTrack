@@ -15,6 +15,8 @@ import { StudentNoBanner } from "@/components/student/student-no-banner";
 import { StudentRepoList, StudentRepoItemData } from "@/components/student/student-repo-list";
 import { PreviousAssignmentCard, StudentFocusDashboard } from "@/components/student/student-summary";
 import { StudentSidebar } from "@/components/student/student-sidebar";
+import { SIDEBAR_COOKIE } from "@/components/student/sidebar-cookie";
+import { cookies } from "next/headers";
 import { GoalsPanel } from "@/components/student/goals-panel";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ArrowRight, Shield } from "lucide-react";
@@ -298,6 +300,7 @@ export default async function DashboardPage({
           githubLogin={profile?.github_login}
           avatarUrl={profile?.avatar_url}
           status={statusCounts}
+          defaultCollapsed={(await cookies()).get(SIDEBAR_COOKIE)?.value === "collapsed"}
         />
 
         <main className="min-w-0 flex-1 space-y-8 lg:py-6">

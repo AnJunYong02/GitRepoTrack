@@ -1,4 +1,6 @@
 import { StudentSidebar } from "@/components/student/student-sidebar";
+import { SIDEBAR_COOKIE } from "@/components/student/sidebar-cookie";
+import { cookies } from "next/headers";
 import { requireStudentRepo } from "@/lib/auth/guards";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { ClientDashboardView } from "./client-view";
@@ -85,6 +87,7 @@ export default async function StudentDashboardDetailPage({
           githubLogin={profile?.github_login}
           avatarUrl={profile?.avatar_url}
           active="none"
+          defaultCollapsed={(await cookies()).get(SIDEBAR_COOKIE)?.value === "collapsed"}
         />
         <main className="min-w-0 flex-1 lg:py-6">
           <ClientDashboardView studentRepoId={studentRepoId} isOrgOwner={isOrgOwner} initialData={initialData} />
