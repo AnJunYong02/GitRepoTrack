@@ -74,6 +74,19 @@
       -4px -4px 10px rgb(var(--neu-light) / 0.9),
       0 0 32px rgb(var(--violet-ink) / 0.14);
   }
+  /* 숫자 칸: 마우스를 올리면 칸 안이 환해짐 (들어간 그림자는 약해지고 배경은 밝게) */
+  .neu-tile {
+    transition:
+      background-color 250ms ease,
+      box-shadow 250ms ease;
+  }
+  .neu-tile:hover {
+    background-color: rgb(var(--neu-light) / 0.55);
+    box-shadow:
+      inset 2px 2px 6px rgb(var(--neu-dark) / 0.18),
+      inset -2px -2px 6px rgb(var(--neu-light) / 0.9),
+      0 0 18px rgb(var(--neu-light) / 0.6);
+  }
   /* 움직임 줄이기 설정을 켠 사용자는 이동 없이 빛만 */
   @media (prefers-reduced-motion: reduce) {
     .neu-hover:hover,

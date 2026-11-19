@@ -114,7 +114,8 @@ function NumberTile({
         {icon}
         {label}
       </span>
-      <div className="flex h-24 w-24 items-center justify-center rounded-3xl shadow-neu-inset">
+      {/* hover 시 칸이 밝아짐 (Image #39) */}
+      <div className="neu-tile flex h-24 w-24 items-center justify-center rounded-3xl shadow-neu-inset">
         <span
           className={`text-4xl font-light tracking-tight ${
             valueTone === "idle" ? "text-muted" : valueTone === "bad" ? TONE.bad.text : "text-ink"
