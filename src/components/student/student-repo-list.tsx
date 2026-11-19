@@ -170,10 +170,10 @@ export function StudentRepoList({ items, topSlot }: StudentRepoListProps) {
     >
       {/* 헤더: 제목 + 개수 + 레이아웃 전환 */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-ink/80">
-          <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+        <h2 className="inline-flex items-center gap-2 text-base font-semibold tracking-wide text-ink">
+          <span className="h-2 w-2 rounded-full bg-accent" />
           내 과제 목록
-          <span className="font-medium normal-case tracking-normal text-muted">({items.length}개)</span>
+          <span className="text-sm font-medium tracking-normal text-muted">({items.length}개)</span>
         </h2>
 
         <div

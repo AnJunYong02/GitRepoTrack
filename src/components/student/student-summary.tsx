@@ -29,7 +29,8 @@ const DEADLINE_BADGE: Record<DeadlineState, { label: string; cls: string } | nul
 };
 
 const CARD = "rounded-[28px] bg-surface shadow-neu";
-const LABEL = "text-[11px] font-semibold uppercase tracking-[0.14em] text-muted";
+// 카드 안 라벨 공통 스타일 ("이번주 과제"·"내 과제 목록" 제목과 같은 16px 진한 글씨)
+const LABEL = "text-base font-semibold tracking-wide text-ink";
 
 function commitView(stats: AssignmentStats): { tone: Tone; value: string; note: string } {
   const { commit } = stats;
@@ -197,14 +198,14 @@ export function StudentFocusDashboard({ current, nowMs }: StudentFocusDashboardP
   return (
     <section aria-label="이번주 과제" className={`${CARD} neu-hover p-6 sm:p-8`}>
       {/* xl 이상: 왼쪽 과제 정보 · 오른쪽 숫자 타일 3개를 한 줄로 */}
-      <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,2fr)] xl:items-center">
+      <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,2fr)] xl:items-start">
         <div className="flex min-w-0 flex-col items-start gap-4">
           <div className="min-w-0">
-            <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+            <span className="inline-flex items-center gap-2 text-base font-semibold tracking-wide text-ink">
+              <span className="h-2 w-2 rounded-full bg-accent" />
               이번주 과제
             </span>
-            <h2 className="mt-2 text-2xl font-normal tracking-tight text-ink">{current.assignmentTitle}</h2>
+            <h2 className="mt-4 text-2xl font-normal tracking-tight text-ink">{current.assignmentTitle}</h2>
             <a
               href={`https://github.com/${current.fullName}`}
               target="_blank"
@@ -228,7 +229,7 @@ export function StudentFocusDashboard({ current, nowMs }: StudentFocusDashboardP
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 xl:border-l xl:border-muted/20 xl:pl-8">
           <NumberTile
             label="커밋"
-            icon={<GitCommit className="h-3.5 w-3.5" />}
+            icon={<GitCommit className="h-4 w-4" />}
             value={
               stats.analyzed ? (
                 <CountUp
@@ -252,7 +253,7 @@ export function StudentFocusDashboard({ current, nowMs }: StudentFocusDashboardP
           />
           <NumberTile
             label="README 키워드"
-            icon={<FileText className="h-3.5 w-3.5" />}
+            icon={<FileText className="h-4 w-4" />}
             value={readmeNumber}
             valueTone={readme.tone}
             effect={readmeEffect}
@@ -281,7 +282,7 @@ export function StudentFocusDashboard({ current, nowMs }: StudentFocusDashboardP
           </NumberTile>
           <NumberTile
             label="마감기한"
-            icon={<CalendarClock className="h-3.5 w-3.5" />}
+            icon={<CalendarClock className="h-4 w-4" />}
             value={deadlineNumber}
             effect={deadlineEffect}
             valueTone={!stats.deadline.at ? "idle" : stats.deadline.state === "onTime" || stats.deadline.state === "open" ? "ok" : "bad"}
