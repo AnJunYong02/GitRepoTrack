@@ -150,6 +150,31 @@ export async function listInstalledOrganizations(
   }
 }
 
+/**
+ * 설치 토큰 Octokit용 로거.
+ * Octokit은 실패한 요청마다 "GET /path - 403 with id ... in 620ms"를 console.error로 찍는데,
+ * 403/404는 호출하는 쪽에서 처리하는 예상된 결과(멤버 아님·권한 없음)라 개발 화면 에러 오버레이를 띄우지 않도록 경고로 낮춘다.
+ * 그 밖의 오류는 그대로 console.error로 남긴다.
+ */
+const installationLog = {
+  debug: () => {},
+  info: () => {},
+  warn: console.warn.bind(console),
+  error: (message: string, ...rest: unknown[]) => {
+    if (/ - 40[34] with id /.test(String(message))) {
+      console.warn(`[GitHub App] ${message}`);
+      return;
+    }
+    console.error(message, ...rest);
+  },
+};
+
+/** GitHub가 rate limit 때문에 돌려준 403인지 (일시적이라 캐시하면 안 됨) */
+function isRateLimitError(err: any): boolean {
+  const remaining = err?.response?.headers?.["x-ratelimit-remaining"];
+  return remaining === "0" || /rate limit/i.test(String(err?.message || ""));
+}
+
 export async function getInstallationOctokit(orgName?: string): Promise<Octokit> {
   const targetOrg = normalizeOrgName(orgName || process.env.GITHUB_ORG_NAME);
   const app = getAppOctokit();
@@ -174,6 +199,7 @@ export async function getInstallationOctokit(orgName?: string): Promise<Octokit>
         privateKey: privateKey,
         installationId: installation.id,
       },
+      log: installationLog,
     });
   } catch (error: any) {
     if (error.status === 404) {
@@ -375,8 +401,11 @@ export async function checkUserOrgRole(
               : "member"
             : null;
         } catch (err: any) {
-          // 404(멤버 아님)는 확정 결과이므로 캐시한다. 그 외 오류는 던져서 캐시하지 않는다.
+          // 404(멤버 아님)는 확정 결과이므로 캐시한다.
           if (err?.status === 404) return null;
+          // 403(App에 Members 읽기 권한이 없거나 조회 불가)도 Owner로 볼 수 없으므로 null로 캐시해
+          // 요청마다 GitHub를 다시 부르지 않게 한다. 단 rate limit 403은 일시적이라 캐시하지 않는다.
+          if (err?.status === 403 && !isRateLimitError(err)) return null;
           throw err;
         }
       }
