@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BackLink } from "@/components/navigation/back-link";
 import { RefreshCw, Play, Clock, AlertCircle, GitBranch, ArrowLeft, ExternalLink, Trophy, Download, GitCommit, FileText } from "lucide-react";
 import { ReadmeChecklist } from "@/components/student/readme-checklist";
+import { ReferenceNotice } from "@/components/student/reference-notice";
 import { CommitChart } from "@/components/student/commit-chart";
 import { CommitTimeline } from "@/components/student/commit-timeline";
 import { DeadlineCountdown } from "@/components/student/deadline-countdown";
@@ -172,6 +173,8 @@ export function ClientDashboardView({ studentRepoId, isOrgOwner = false, initial
           <ThemeToggle />
         </div>
       </header>
+
+      <ReferenceNotice subject="이 분석 결과" />
 
       {message && (
         <div

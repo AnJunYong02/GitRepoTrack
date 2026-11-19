@@ -10,6 +10,7 @@ import { StudentSidebar } from "@/components/student/student-sidebar";
 import { SIDEBAR_COOKIE } from "@/components/student/sidebar-cookie";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CountUp } from "@/components/count-up";
+import { ReferenceNotice } from "@/components/student/reference-notice";
 
 /** 카드 라벨 (학생 대시보드와 같은 16px 스타일) */
 function SectionLabel({ children }: { children: ReactNode }) {
@@ -285,6 +286,8 @@ export default async function LeaderboardPage({
           <ThemeToggle />
         </div>
       </header>
+
+      <ReferenceNotice subject="이 순위표" target="순위·분석 결과" />
 
       {/* 등재 조건 + 충족 인원 */}
       <section aria-label="순위표 등재 조건" className="neu-hover rounded-[28px] bg-surface p-6 shadow-neu">
