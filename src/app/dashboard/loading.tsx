@@ -72,12 +72,8 @@ export default function DashboardLoading() {
             </div>
           </div>
 
-          {/* 카드 스켈레톤: 날짜 · 달성률 · 이번주 과제 / 과제 목록 · Goals */}
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,2.4fr)] animate-pulse">
-            <div className="h-56 rounded-[28px] bg-surface shadow-neu" />
-            <div className="h-56 rounded-[28px] bg-surface shadow-neu" />
-            <div className="h-56 rounded-[28px] bg-surface shadow-neu md:col-span-2 xl:col-span-1" />
-          </div>
+          {/* 카드 스켈레톤: 이번주 과제(가로 전체) / 과제 목록 · Goals */}
+          <div className="h-56 rounded-[28px] bg-surface shadow-neu animate-pulse" />
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 animate-pulse">
             <div className="h-80 rounded-[28px] bg-surface shadow-neu" />
             <div className="h-80 rounded-[28px] bg-surface shadow-neu" />

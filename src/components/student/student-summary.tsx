@@ -9,7 +9,6 @@ interface StudentFocusDashboardProps {
 }
 
 const MAX_KEYWORD_CHIPS = 6;
-const SEOUL_TZ = "Asia/Seoul";
 
 // 상태별 색상 (기존 목록 배지 팔레트와 동일)
 const TONE = {
@@ -93,60 +92,6 @@ function DeadlineLine({ stats, compact = false }: { stats: AssignmentStats; comp
   );
 }
 
-/** 오늘 날짜 카드 (서버 시간대와 무관하게 서울 기준) */
-function DateCard({ nowMs }: { nowMs: number }) {
-  const now = new Date(nowMs);
-  const day = new Intl.DateTimeFormat("en-US", { day: "numeric", timeZone: SEOUL_TZ }).format(now);
-  const monthYear = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: SEOUL_TZ })
-    .format(now)
-    .toUpperCase();
-  const weekday = new Intl.DateTimeFormat("ko-KR", { weekday: "long", timeZone: SEOUL_TZ }).format(now);
-
-  return (
-    <section aria-label="오늘 날짜" className={`${CARD} neu-hover flex flex-col items-center justify-center gap-1 p-6`}>
-      <span className="text-7xl font-light leading-none tracking-tight text-ink">{day}</span>
-      <span className="mt-2 text-xs font-semibold tracking-[0.16em] text-muted">{monthYear}</span>
-      <span className="text-xs text-muted">{weekday}</span>
-    </section>
-  );
-}
-
-/** 이번주 과제 달성률 링 (커밋 % · README % 평균) */
-function ProgressRingCard({ stats }: { stats: AssignmentStats }) {
-  const percent = stats.analyzed ? Math.round((stats.commit.percent + stats.readme.percent) / 2) : null;
-  const radius = 64;
-  const circumference = 2 * Math.PI * radius;
-  const dash = ((percent ?? 0) / 100) * circumference;
-
-  return (
-    <section aria-label="이번주 과제 달성률" className={`${CARD} neu-hover flex items-center justify-center p-5`}>
-      <div className="relative flex h-44 w-44 items-center justify-center rounded-full shadow-neu">
-        <svg viewBox="0 0 160 160" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden>
-          <circle cx="80" cy="80" r={radius} fill="none" strokeWidth="6" className="stroke-muted/15" />
-          <circle
-            cx="80"
-            cy="80"
-            r={radius}
-            fill="none"
-            strokeWidth="6"
-            strokeLinecap="round"
-            strokeDasharray={`${dash} ${circumference}`}
-            className="stroke-accent"
-          />
-        </svg>
-        <div className="text-center">
-          <div className="text-5xl font-light tracking-tight text-ink">
-            {percent === null ? "-" : `${percent}%`}
-          </div>
-          <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
-            {percent === null ? "분석 필요" : "달성"}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 /** 숫자 타일 (사진의 ACTIVE GOALS / BLOCKED TASKS 칸) */
 function NumberTile({
   label,
@@ -184,7 +129,7 @@ function NumberTile({
   );
 }
 
-/** 학생 대시보드 상단: 날짜 · 달성률 · 이번주(최신) 과제 통계 */
+/** 학생 대시보드 상단: 이번주(최신) 과제 통계 (전체 폭 가로 카드) */
 export function StudentFocusDashboard({ current, nowMs }: StudentFocusDashboardProps) {
   const stats = buildAssignmentStats(current, nowMs);
   const commit = commitView(stats);
@@ -207,24 +152,21 @@ export function StudentFocusDashboard({ current, nowMs }: StudentFocusDashboardP
     : "지각";
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,2.4fr)]">
-      <DateCard nowMs={nowMs} />
-      <ProgressRingCard stats={stats} />
-
-      {/* 이번주 과제 */}
-      <section aria-label="이번주 과제" className={`${CARD} neu-hover p-6 md:col-span-2 xl:col-span-1`}>
-        <div className="flex flex-wrap items-start justify-between gap-3">
+    <section aria-label="이번주 과제" className={`${CARD} neu-hover p-6 sm:p-8`}>
+      {/* xl 이상: 왼쪽 과제 정보 · 오른쪽 숫자 타일 3개를 한 줄로 */}
+      <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,2fr)] xl:items-center">
+        <div className="flex min-w-0 flex-col items-start gap-4">
           <div className="min-w-0">
             <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
               <span className="h-1.5 w-1.5 rounded-full bg-accent" />
               이번주 과제
             </span>
-            <h2 className="mt-1 text-lg font-semibold text-ink">{current.assignmentTitle}</h2>
+            <h2 className="mt-2 text-2xl font-normal tracking-tight text-ink">{current.assignmentTitle}</h2>
             <a
               href={`https://github.com/${current.fullName}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-0.5 inline-flex items-center gap-1.5 break-all font-mono text-xs text-muted hover:text-ink hover:underline"
+              className="mt-1 inline-flex items-center gap-1.5 break-all font-mono text-xs text-muted hover:text-ink hover:underline"
             >
               <FolderGit2 className="h-3.5 w-3.5 shrink-0" />
               <span>{current.fullName}</span>
@@ -240,7 +182,7 @@ export function StudentFocusDashboard({ current, nowMs }: StudentFocusDashboardP
           </Link>
         </div>
 
-        <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 xl:border-l xl:border-muted/20 xl:pl-8">
           <NumberTile
             label="커밋"
             icon={<GitCommit className="h-3.5 w-3.5" />}
@@ -290,13 +232,14 @@ export function StudentFocusDashboard({ current, nowMs }: StudentFocusDashboardP
           />
         </div>
 
-        {!stats.analyzed && (
-          <p className="mt-5 rounded-2xl px-4 py-3 text-xs text-muted shadow-neu-inset">
-            아직 분석 전입니다. [분석 대시보드]에서 분석을 실행하면 부족한 항목이 표시됩니다.
-          </p>
-        )}
-      </section>
-    </div>
+      </div>
+
+      {!stats.analyzed && (
+        <p className="mt-6 rounded-2xl px-4 py-3 text-xs text-muted shadow-neu-inset">
+          아직 분석 전입니다. [분석 대시보드]에서 분석을 실행하면 부족한 항목이 표시됩니다.
+        </p>
+      )}
+    </section>
   );
 }
 
