@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, CalendarClock, ExternalLink, FileText, FolderGit2, GitCommit } from "lucide-react";
 import type { StudentRepoItemData } from "@/components/student/student-repo-list";
+import { CountUp } from "@/components/count-up";
 import { AssignmentStats, buildAssignmentStats, DeadlineState } from "@/lib/student/assignment-stats";
 
 interface StudentFocusDashboardProps {
@@ -103,7 +104,7 @@ function NumberTile({
 }: {
   label: string;
   icon: React.ReactNode;
-  value: string;
+  value: React.ReactNode;
   valueTone: Tone;
   caption: React.ReactNode;
   children?: React.ReactNode;
@@ -187,7 +188,7 @@ export function StudentFocusDashboard({ current, nowMs }: StudentFocusDashboardP
           <NumberTile
             label="커밋"
             icon={<GitCommit className="h-3.5 w-3.5" />}
-            value={stats.analyzed ? String(stats.commit.current) : "-"}
+            value={stats.analyzed ? <CountUp value={stats.commit.current} /> : "-"}
             valueTone={commit.tone}
             caption={
               <>
