@@ -93,6 +93,25 @@ function DeadlineLine({ stats, compact = false }: { stats: AssignmentStats; comp
   );
 }
 
+/** 충족 표시: 선을 그리듯 나타나는 초록 체크 (글씨 없음) */
+function DrawnCheck({ label }: { label: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      role="img"
+      aria-label={label}
+      className="neu-check-draw h-12 w-12 text-emerald-500 dark:text-emerald-400"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M5 12.5l4.5 4.5L19 7.5" pathLength={1} />
+    </svg>
+  );
+}
+
 /** 숫자 타일 (사진의 ACTIVE GOALS / BLOCKED TASKS 칸) */
 function NumberTile({
   label,
@@ -101,6 +120,8 @@ function NumberTile({
   valueTone,
   caption,
   children,
+  effect,
+  effectDelayMs = 0,
 }: {
   label: string;
   icon: React.ReactNode;
@@ -108,6 +129,10 @@ function NumberTile({
   valueTone: Tone;
   caption: React.ReactNode;
   children?: React.ReactNode;
+  /** success: 충족 → 살짝 커졌다 돌아옴 / fail: 미충족 → 흔들림 + 상태색 테두리 빛 */
+  effect?: "success" | "fail";
+  /** 효과 시작 지연(ms). 커밋 칸은 카운트업이 끝난 뒤 재생 */
+  effectDelayMs?: number;
 }) {
   return (
     <div className="flex flex-col items-center gap-3 text-center">
@@ -116,10 +141,15 @@ function NumberTile({
         {label}
       </span>
       {/* hover 시 칸이 밝아짐 (Image #39) */}
-      <div className="neu-tile flex h-24 w-24 items-center justify-center rounded-3xl shadow-neu-inset">
+      <div
+        className={`neu-tile flex h-24 w-24 items-center justify-center rounded-3xl shadow-neu-inset ${
+          effect === "success" ? "neu-pop" : ""
+        } ${effect === "fail" ? `neu-shake ring-2 ${valueTone === "bad" ? "ring-red-400/40" : "ring-amber-400/45"}` : ""}`}
+        style={effect && effectDelayMs ? { animationDelay: `${effectDelayMs}ms` } : undefined}
+      >
         <span
           className={`text-4xl font-light tracking-tight ${
-            valueTone === "idle" ? "text-muted" : valueTone === "bad" ? TONE.bad.text : "text-ink"
+            valueTone === "idle" ? "text-muted" : valueTone === "ok" ? "text-ink" : TONE[valueTone].text
           }`}
         >
           {value}
@@ -138,20 +168,31 @@ export function StudentFocusDashboard({ current, nowMs }: StudentFocusDashboardP
   const readme = readmeView(stats);
   const missing = stats.readme.missing;
 
-  const readmeNumber = !stats.analyzed
+  // 충족이면 초록 체크, 미충족이면 기존 값(통과 개수 또는 ✕)
+  const readmeNumber: React.ReactNode = !stats.analyzed
     ? "-"
+    : stats.readme.satisfied
+    ? <DrawnCheck label="README 키워드 충족" />
     : stats.readme.total > 0
     ? String(stats.readme.passed)
-    : stats.readme.satisfied
-    ? "✓"
     : "✕";
+  const readmeEffect = !stats.analyzed ? undefined : stats.readme.satisfied ? "success" : "fail";
   const deadlineNumber = !stats.deadline.at
     ? "-"
     : stats.deadline.state === "open" || stats.deadline.state === "overdue"
     ? formatDday(stats.deadline.daysLeft)
     : stats.deadline.state === "onTime"
-    ? "✓"
+    ? <DrawnCheck label="기한 내 제출" />
     : "지각";
+  // 진행 중(D-n)·마감 없음은 차분하게, 기한 내 제출은 충족, 기한 경과·지각은 미충족
+  const deadlineEffect =
+    stats.deadline.state === "onTime"
+      ? "success"
+      : stats.deadline.state === "overdue" || stats.deadline.state === "late"
+      ? "fail"
+      : undefined;
+  const commitEffect = !stats.analyzed ? undefined : stats.commit.satisfied ? "success" : "fail";
+  const COUNT_UP_MS = 800;
 
   return (
     <section aria-label="이번주 과제" className={`${CARD} neu-hover p-6 sm:p-8`}>
@@ -188,8 +229,20 @@ export function StudentFocusDashboard({ current, nowMs }: StudentFocusDashboardP
           <NumberTile
             label="커밋"
             icon={<GitCommit className="h-3.5 w-3.5" />}
-            value={stats.analyzed ? <CountUp value={stats.commit.current} /> : "-"}
+            value={
+              stats.analyzed ? (
+                <CountUp
+                  value={stats.commit.current}
+                  durationMs={COUNT_UP_MS}
+                  doneClassName={stats.commit.satisfied ? "text-emerald-600 dark:text-emerald-400 transition-colors" : ""}
+                />
+              ) : (
+                "-"
+              )
+            }
             valueTone={commit.tone}
+            effect={commitEffect}
+            effectDelayMs={stats.commit.current > 0 ? COUNT_UP_MS : 0}
             caption={
               <>
                 <div>{stats.analyzed ? `기준 ${stats.commit.target}개 · ${stats.commit.percent}%` : commit.value}</div>
@@ -202,6 +255,7 @@ export function StudentFocusDashboard({ current, nowMs }: StudentFocusDashboardP
             icon={<FileText className="h-3.5 w-3.5" />}
             value={readmeNumber}
             valueTone={readme.tone}
+            effect={readmeEffect}
             caption={
               <>
                 <div>{readme.value}</div>
@@ -229,6 +283,7 @@ export function StudentFocusDashboard({ current, nowMs }: StudentFocusDashboardP
             label="마감기한"
             icon={<CalendarClock className="h-3.5 w-3.5" />}
             value={deadlineNumber}
+            effect={deadlineEffect}
             valueTone={!stats.deadline.at ? "idle" : stats.deadline.state === "onTime" || stats.deadline.state === "open" ? "ok" : "bad"}
             caption={<DeadlineLine stats={stats} compact />}
           />
