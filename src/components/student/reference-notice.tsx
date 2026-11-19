@@ -25,11 +25,10 @@ export function ReferenceNotice({ subject, target = "분석 결과" }: Reference
             참고용
           </span>
           <span>{subject}는 참고용입니다.</span>
-            <p className="text-muted">
-                여기 표시되는 {target}는 <strong className="font-semibold text-ink">실제 과제 채점 점수와 다를 수 있습니다.</strong>{" "}
-            </p>
         </p>
-
+        <p className="text-muted">
+          여기 표시되는 {target}는 <strong className="font-semibold text-ink">실제 과제 채점 점수와 다를 수 있습니다.</strong>
+        </p>
       </div>
     </div>
   );
