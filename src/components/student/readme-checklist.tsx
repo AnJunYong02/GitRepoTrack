@@ -63,7 +63,7 @@ export function ReadmeChecklist({
   const passedCount = passedItems.length;
 
   return (
-    <div className="neu-hover space-y-5 rounded-[28px] bg-surface p-6 shadow-neu">
+    <div className="neu-hover h-full space-y-5 rounded-[28px] bg-surface p-6 shadow-neu">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-ink/80">
           <span className="h-1.5 w-1.5 rounded-full bg-accent" />

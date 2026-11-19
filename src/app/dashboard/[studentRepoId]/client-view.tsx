@@ -224,8 +224,9 @@ export function ClientDashboardView({ studentRepoId, isOrgOwner = false, initial
       </section>
 
       {/* 아래: README 키워드 검사(넓게) + 커밋 추이·이력 */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <div className="lg:col-span-7 2xl:col-span-8 min-w-0">
+      {/* items-stretch: 두 열 높이를 같게 해서 아래 끝선을 맞춤 */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        <div className="lg:col-span-7 2xl:col-span-8 min-w-0 flex flex-col">
           <ReadmeChecklist
             satisfied={readmeResults.satisfied}
             missingKeywords={readmeResults.missingKeywords}
@@ -233,9 +234,12 @@ export function ClientDashboardView({ studentRepoId, isOrgOwner = false, initial
           />
         </div>
 
-        <div className="lg:col-span-5 2xl:col-span-4 lg:sticky lg:top-6 min-w-0 space-y-6">
+        <div className="lg:col-span-5 2xl:col-span-4 min-w-0 flex flex-col gap-6">
           <CommitChart commits={data.commits} />
-          <CommitTimeline commits={data.commits} />
+          {/* 남는 높이는 커밋 이력 카드가 채움 */}
+          <div className="flex-1 min-h-0">
+            <CommitTimeline commits={data.commits} />
+          </div>
         </div>
       </div>
     </div>

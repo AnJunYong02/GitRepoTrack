@@ -35,7 +35,7 @@ export function CommitTimeline({ commits, limit = 10 }: CommitTimelineProps) {
   );
 
   return (
-    <div className="neu-hover rounded-[28px] bg-surface p-6 shadow-neu space-y-4">
+    <div className="neu-hover flex h-full flex-col rounded-[28px] bg-surface p-6 shadow-neu space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/80">최근 커밋 이력</h3>
         <span className="text-xs text-muted">
