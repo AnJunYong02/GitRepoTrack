@@ -19,6 +19,19 @@
   --violet-ink: 110 86 207; /* 목록 아이콘 */
   --neu-light: 255 255 255; /* 왼쪽 위 밝은 그림자 */
   --neu-dark: 174 166 153; /* 오른쪽 아래 어두운 그림자 */
+
+  /* 학생 화면 플랫 디자인 토큰 (RGB 채널) */
+  --canvas: 250 250 248; /* 페이지 바탕 */
+  --chip: 241 242 244; /* 회색 버튼·검색창 배경 */
+  --line: 233 234 236; /* 구분선 */
+  --fg: 17 20 24; /* 제목·본문 */
+  --fg2: 75 80 88; /* 보조 본문 */
+  --fg3: 150 155 163; /* 라벨·캡션 */
+  --brand: 22 163 74; /* 초록 (충족·주 버튼) */
+  --brand-soft: 232 245 236; /* 연초록 배경 */
+  --danger: 229 57 53; /* 빨강 (보완 필요) */
+  --danger-soft: 253 236 236; /* 연빨강 배경 */
+  --chart: 124 58 237; /* 커밋 막대 보라 */
 }
 
 /*
@@ -44,6 +57,18 @@
   --violet-ink: 200 186 245;
   --neu-light: 58 55 52;
   --neu-dark: 18 17 16;
+
+  --canvas: 17 18 20;
+  --chip: 38 40 44;
+  --line: 44 46 51;
+  --fg: 236 237 239;
+  --fg2: 180 184 190;
+  --fg3: 120 125 133;
+  --brand: 52 199 106;
+  --brand-soft: 22 50 33;
+  --danger: 248 97 94;
+  --danger-soft: 60 26 26;
+  --chart: 167 139 250;
 }
 
 @layer components {
@@ -102,6 +127,20 @@
     animation: neu-shake 520ms ease-in-out both;
   }
 
+  /* 인사말 타자 효과 커서: 얇은 세로 막대, 다 친 뒤 3번 깜빡임 */
+  .typing-caret {
+    display: inline-block;
+    width: 3px;
+    height: 0.85em;
+    margin-left: 4px;
+    /* 폭(3px)+왼쪽 여백(4px)만큼 당겨 줄 공간을 차지하지 않게 → 문장이 꽉 차도 커서가 다음 줄로 내려가지 않음 */
+    margin-right: -7px;
+    vertical-align: -0.06em;
+    border-radius: 2px;
+    background-color: rgb(var(--brand));
+    animation: caret-blink 800ms steps(1, end) infinite;
+  }
+
   /* 움직임 줄이기 설정을 켠 사용자는 이동 없이 빛만, 체크는 처음부터 다 그려진 상태 */
   @media (prefers-reduced-motion: reduce) {
     .neu-hover:hover,
@@ -115,6 +154,9 @@
     .neu-check-draw path {
       animation: none;
       stroke-dashoffset: 0;
+    }
+    .typing-caret {
+      display: none;
     }
   }
 }
@@ -159,5 +201,15 @@ body {
   }
   80% {
     transform: translateX(3px);
+  }
+}
+
+@keyframes caret-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
   }
 }

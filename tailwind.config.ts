@@ -22,6 +22,24 @@ export default {
         ink: channel("ink"),
         muted: channel("muted"),
         accent: channel("accent"),
+        // 학생 화면 플랫 디자인
+        canvas: channel("canvas"),
+        chip: channel("chip"),
+        line: channel("line"),
+        fg: {
+          DEFAULT: channel("fg"),
+          2: channel("fg2"),
+          3: channel("fg3"),
+        },
+        brand: {
+          DEFAULT: channel("brand"),
+          soft: channel("brand-soft"),
+        },
+        danger: {
+          DEFAULT: channel("danger"),
+          soft: channel("danger-soft"),
+        },
+        chart: channel("chart"),
         // 기본 팔레트 violet과 겹치지 않게 별도 이름 사용
         lilac: {
           DEFAULT: channel("violet"),
