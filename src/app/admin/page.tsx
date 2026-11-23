@@ -1,25 +1,31 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { Navbar } from "@/components/navbar";
 import { getCurrentUser } from "@/lib/auth/guards";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { normalizeOrgName } from "@/lib/github/app";
 import { normalizeCategoryKey } from "@/lib/github/repo-parser";
-import {
-  ACTIVE_ORG_COOKIE,
-  checkIsUserOwnerOfOrg,
-  getAvailableOrganizations,
-  isValidOrgSlug,
-} from "@/lib/org/active-org";
-import { OrganizationSwitcher } from "@/components/org-switcher";
-import {
-  AdminAssignmentList,
-  AdminAssignmentItemData,
-} from "@/components/admin/admin-assignment-list";
-import { Shield, ShieldAlert, ArrowLeft, RefreshCw } from "lucide-react";
+import { ACTIVE_ORG_COOKIE, checkIsUserOwnerOfOrg, isValidOrgSlug } from "@/lib/org/active-org";
+import { AdminAssignmentList, AdminAssignmentItemData } from "@/components/admin/admin-assignment-list";
 import { CreateStudentReposPanel } from "@/components/admin/create-student-repos-panel";
+import { StudentShell } from "@/components/student/student-shell";
+import { TypingText } from "@/components/student/typing-text";
 import { escapeLikePattern } from "@/lib/cache/cache-keys";
+
+/** 로그인 필요 · 권한 없음 안내 (플랫 디자인) */
+function AdminNotice({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-4 border-y border-line py-12">
+      <h1 className="text-[24px] font-bold tracking-tight text-fg">{title}</h1>
+      <div className="space-y-4 text-[14px] text-fg-2">{children}</div>
+    </section>
+  );
+}
+
+const NOTICE_BTN_GREEN =
+  "inline-flex items-center gap-1.5 rounded-xl bg-brand px-4 py-2.5 text-[13px] font-semibold text-white hover:brightness-110";
+const NOTICE_BTN_GRAY =
+  "inline-flex items-center gap-1.5 rounded-xl bg-chip px-4 py-2.5 text-[13px] font-semibold text-fg-2 hover:text-fg";
 
 export default async function AdminAssignmentsPage({
   searchParams,
@@ -29,24 +35,8 @@ export default async function AdminAssignmentsPage({
   const current = await getCurrentUser();
 
   if (!current) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-        <Navbar />
-        <main className="mx-auto max-w-lg px-4 py-20 text-center space-y-4">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-950 text-amber-600">
-            <ShieldAlert className="w-6 h-6" />
-          </div>
-          <h1 className="text-xl font-bold">로그인이 필요합니다</h1>
-          <p className="text-xs text-slate-500">관리자 페이지에 접근하려면 먼저 GitHub로 로그인해주세요.</p>
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-xs font-semibold text-white hover:bg-blue-500"
-          >
-            로그인하기
-          </Link>
-        </main>
-      </div>
-    );
+    // 로그인 전이면 첫 화면(GitHub로 시작하기)으로
+    redirect("/");
   }
 
   const sp = searchParams ? await searchParams : undefined;
@@ -67,77 +57,32 @@ export default async function AdminAssignmentsPage({
   }
 
   const activeOrg = selectedOrg;
-  const [organizations, isOwnerOfActiveOrg] = await Promise.all([
-    getAvailableOrganizations(activeOrg, {
-      user: current.user,
-      profile: current.profile,
-    }),
-    checkIsUserOwnerOfOrg(activeOrg, current.user, current.profile),
-  ]);
+  const isOwnerOfActiveOrg = await checkIsUserOwnerOfOrg(activeOrg, current.user, current.profile);
+  const sidebarBase = {
+    activeOrg,
+    githubLogin: current.profile?.github_login,
+    avatarUrl: current.profile?.avatar_url,
+  };
 
   // If the user is NOT an Owner of the selected Organization, show guidance card
   if (!isOwnerOfActiveOrg) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-        <Navbar orgName={activeOrg} assignmentTitle="권한 확인" />
-        <main className="mx-auto max-w-xl px-4 py-16 space-y-6">
-          <OrganizationSwitcher
-            activeOrg={activeOrg}
-            organizations={organizations}
-            basePath="/admin"
-            isOwner={false}
-          />
-
-          <div className="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-white dark:bg-slate-900 p-8 shadow-sm space-y-5 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600">
-              <ShieldAlert className="w-8 h-8" />
-            </div>
-
-            <div className="space-y-1">
-              <h1 className="text-xl font-bold">
-                {activeOrg} Organization의 Owner 권한이 필요합니다
-              </h1>
-              <p className="text-xs text-slate-500">
-                이 페이지는 선택한 GitHub Organization({activeOrg})의 Owner(교수 및 TA) 전용 관리 공간입니다.
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-slate-50 dark:bg-slate-950/80 p-4 text-xs text-left space-y-2 border border-slate-100 dark:border-slate-800">
-              <div className="flex justify-between">
-                <span className="text-slate-500">현재 로그인 계정:</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">@{current.profile?.github_login}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">선택된 Organization:</span>
-                <span className="font-semibold text-indigo-600 dark:text-indigo-400">{activeOrg}</span>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-              <Link
-                href={`/dashboard?org=${encodeURIComponent(activeOrg)}`}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>{activeOrg} 학생 과제 목록으로 이동</span>
-              </Link>
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50"
-              >
-                <span>다른 Organization 선택하기</span>
-              </Link>
-              <Link
-                href="/login"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50"
-              >
-                <RefreshCw className="w-4 h-4" />
-                <span>권한 재확인 (다시 로그인)</span>
-              </Link>
-            </div>
+      <StudentShell sidebar={{ ...sidebarBase, isOwner: false, active: "none" }}>
+        <AdminNotice title={`${activeOrg} Owner 권한이 필요해요`}>
+          <p>
+            이 화면은 선택한 GitHub Organization의 Owner(교수·TA) 전용 관리 공간입니다. 현재 계정{" "}
+            <strong className="text-fg">@{current.profile?.github_login}</strong>은 {activeOrg}의 Owner가 아니에요.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Link href={`/dashboard?org=${encodeURIComponent(activeOrg)}`} className={NOTICE_BTN_GREEN}>
+              {activeOrg} 학생 과제 목록으로
+            </Link>
+            <Link href="/dashboard" className={NOTICE_BTN_GRAY}>
+              다른 Organization 선택
+            </Link>
           </div>
-        </main>
-      </div>
+        </AdminNotice>
+      </StudentShell>
     );
   }
 
@@ -195,41 +140,43 @@ export default async function AdminAssignmentsPage({
       orgName: a.org_name,
       branch: a.branch,
       rankingMode: a.ranking_mode === "none" ? "none" : "live",
-      deadlineFormatted: new Date(a.deadline_at).toLocaleDateString("ko-KR"),
+      deadlineAt: a.deadline_at,
       totalStudents,
       submittedStudents,
       unanalyzedStudents,
     };
   });
 
+  const greeting = current.profile?.github_login ? `${current.profile.github_login}님, 안녕하세요.` : "안녕하세요.";
+  // 사이드바 "순위표": 가장 최근 과제
+  const latest = assignmentItems[0];
+
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <Navbar orgName={activeOrg} assignmentTitle="과제 목록" />
-
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 px-3 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300">
-              <Shield className="w-3.5 h-3.5" />
-              <span>교수 및 TA 전용 관리자</span>
-            </div>
-            <h1 className="text-2xl font-bold mt-2">과제 관리 및 제출 현황</h1>
+    <StudentShell
+      sidebar={{
+        ...sidebarBase,
+        mode: "admin",
+        isOwner: true,
+        active: "admin",
+        leaderboardHref: latest ? `/assignments/${latest.id}/leaderboard` : null,
+      }}
+    >
+      <div className="space-y-14">
+        <header className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="space-y-3">
+            <p className="flex items-center gap-2 text-[14px] font-semibold text-chart">
+              <span className="h-2 w-2 rounded-full bg-chart" aria-hidden />
+              교수 · TA 전용 관리자
+            </p>
+            <h1 className="text-[34px] font-bold tracking-[-0.03em] text-fg sm:text-[44px]">
+              <TypingText text={greeting} />
+            </h1>
           </div>
-
           <CreateStudentReposPanel orgName={activeOrg} />
-        </div>
+        </header>
 
-        {/* Multi-Organization Switcher */}
-        <OrganizationSwitcher
-          activeOrg={activeOrg}
-          organizations={organizations}
-          basePath="/admin"
-          isOwner
-        />
-
-        {/* Unified Repo Search Bar & Assignments List */}
         <AdminAssignmentList items={assignmentItems} activeOrg={activeOrg} />
-      </main>
-    </div>
+      </div>
+    </StudentShell>
   );
 }
