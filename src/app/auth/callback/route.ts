@@ -20,7 +20,7 @@ export async function GET(request: Request) {
 
     if (error) {
       console.error("Auth callback error:", error);
-      return NextResponse.redirect(`${requestUrl.origin}/login?error=${encodeURIComponent(error.message)}`);
+      return NextResponse.redirect(`${requestUrl.origin}/?error=${encodeURIComponent(error.message)}`);
     }
 
     const user = data.user;
