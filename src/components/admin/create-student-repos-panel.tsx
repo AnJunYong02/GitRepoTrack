@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { invalidateOrgReposSessionCache } from "@/lib/cache/session-cache";
@@ -10,6 +11,7 @@ import {
   CheckCircle2,
   FolderPlus,
   Info,
+  Plus,
   Loader2,
   Lock,
   RotateCcw,
@@ -101,7 +103,7 @@ function GithubLoginCell({ student }: { student: PreviewStudent }) {
 
   const badge =
     student.githubSource === "csv"
-      ? { label: "CSV", title: "명단 CSV의 GitHub 열", className: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" }
+      ? { label: "CSV", title: "명단 CSV의 GitHub 열", className: "bg-chip text-fg-2" }
       : student.githubSource === "verified-email"
       ? {
           label: "로그인 이메일",
@@ -119,7 +121,7 @@ function GithubLoginCell({ student }: { student: PreviewStudent }) {
       : {
           label: `${shortAssignmentName(student.sourceRepo)}에서`,
           title: student.sourceRepo ? `${student.sourceRepo}의 collaborator에서 찾음` : undefined,
-          className: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300",
+          className: "bg-chart/10 text-chart",
         };
 
   return (
@@ -139,9 +141,25 @@ function GithubLoginCell({ student }: { student: PreviewStudent }) {
  * 관리자 과제 목록 화면의 "학생 Repo 일괄 생성".
  * 과제 접두사로 과제를 찾거나 새로 만든 뒤, 학생 명단(시크릿)대로 repo를 만든다.
  */
-export function CreateStudentReposPanel({ orgName }: { orgName: string }) {
+export function CreateStudentReposPanel({
+  orgName,
+  trigger = "button",
+  navClassName = "",
+  hideClassName = "",
+}: {
+  orgName: string;
+  /** button: 헤더의 초록 버튼, nav: 사이드바 메뉴 줄 */
+  trigger?: "button" | "nav";
+  /** trigger="nav"일 때 메뉴 줄 클래스 */
+  navClassName?: string;
+  /** trigger="nav"일 때 사이드바가 접히면 글자를 숨기는 클래스 */
+  hideClassName?: string;
+}) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  // 모달은 document.body에 그린다 (사이드바처럼 좁은 영역 안에서 열어도 화면 전체를 덮도록)
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const [prefixInput, setPrefixInput] = useState("");
   const [title, setTitle] = useState("");
   const [deadline, setDeadline] = useState(defaultDeadlineLocal);
@@ -282,26 +300,42 @@ export function CreateStudentReposPanel({ orgName }: { orgName: string }) {
     }
   };
 
-  if (!isOpen) {
-    return (
+  const triggerButton =
+    trigger === "nav" ? (
+      <button type="button" onClick={() => setIsOpen(true)} className={navClassName}>
+        <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center">
+          <Plus className="h-[18px] w-[18px]" />
+        </span>
+        <span className={`whitespace-nowrap ${hideClassName}`}>학생 Repo 생성</span>
+      </button>
+    ) : (
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500 shadow-sm"
+        className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-brand px-6 py-3.5 text-[15px] font-bold text-white transition hover:brightness-110"
       >
-        <FolderPlus className="w-4 h-4" />
-        <span>학생 Repo 일괄 생성</span>
+        <Plus className="h-4 w-4" />
+        학생 Repo 일괄 생성
       </button>
     );
-  }
+
+  if (!isOpen || !mounted) return triggerButton;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-3xl max-h-[90vh] overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-xl flex flex-col">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-5 py-4">
+    <>
+      {triggerButton}
+      {createPortal(modal(), document.body)}
+    </>
+  );
+
+  function modal() {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4 font-display text-fg">
+      <div className="w-full max-w-3xl max-h-[90vh] overflow-hidden rounded-2xl border border-line bg-canvas shadow-xl flex flex-col">
+        <div className="flex items-center justify-between border-b border-line px-5 py-4">
           <div>
-            <h3 className="text-sm font-bold">학생 Repo 일괄 생성 · {orgName}</h3>
-            <p className="text-[11px] text-slate-500 mt-0.5">
+            <h3 className="text-[16px] font-bold">학생 Repo 일괄 생성 · {orgName}</h3>
+            <p className="text-[11px] text-fg-3 mt-0.5">
               학생 명단(시크릿)대로 private repo를 만들고, 각 학생 1명만 push 권한 collaborator로 등록합니다.
               명단에 GitHub ID가 없으면 이전 과제 repo의 collaborator → 학생이 GitRepoTrack 로그인 때 확인된 GitHub 이메일 → 공개 이메일 검색 순으로 찾습니다.
             </p>
@@ -311,7 +345,7 @@ export function CreateStudentReposPanel({ orgName }: { orgName: string }) {
             onClick={close}
             disabled={running}
             aria-label="닫기"
-            className="text-slate-400 hover:text-slate-600 disabled:opacity-40"
+            className="rounded-lg p-1 text-fg-3 hover:bg-chip hover:text-fg disabled:opacity-40"
           >
             <X className="w-4 h-4" />
           </button>
@@ -320,7 +354,7 @@ export function CreateStudentReposPanel({ orgName }: { orgName: string }) {
         <div className="overflow-y-auto px-5 py-4 space-y-4">
           {/* 접두사 입력 */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+            <label className="text-xs font-semibold text-fg-2">
               과제 접두사
             </label>
             <div className="flex flex-wrap items-center gap-2">
@@ -337,18 +371,18 @@ export function CreateStudentReposPanel({ orgName }: { orgName: string }) {
                 }}
                 placeholder="assign10"
                 disabled={running}
-                className="w-40 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-xs font-mono"
+                className="w-40 rounded-lg bg-chip px-3 py-2 text-xs font-mono text-fg focus:outline-none focus:ring-2 focus:ring-brand/30"
               />
-              <span className="inline-flex items-center gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-2 text-xs font-mono text-slate-600 dark:text-slate-300">
+              <span className="inline-flex items-center gap-1 rounded-lg bg-chip px-2.5 py-2 text-xs font-mono text-fg-2">
                 <Lock className="w-3 h-3" />
                 -c01 (분반 고정)
               </span>
-              <span className="text-xs font-mono text-slate-500">-학번</span>
+              <span className="text-xs font-mono text-fg-3">-학번</span>
               <button
                 type="button"
                 onClick={loadPreview}
                 disabled={loadingPreview || running || !prefixInput.trim()}
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
+                className="inline-flex items-center gap-1 rounded-lg bg-chip px-3 py-2 text-xs font-semibold text-fg-2 hover:text-fg disabled:opacity-50"
               >
                 {loadingPreview ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -358,13 +392,13 @@ export function CreateStudentReposPanel({ orgName }: { orgName: string }) {
                 <span>미리보기</span>
               </button>
             </div>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-fg-3">
               예: <code>assign10</code> 입력 → <code>assign10-c01-22100063</code>
             </p>
           </div>
 
           {errorMsg && (
-            <div className="flex items-start gap-2 rounded-lg bg-red-50 dark:bg-red-950/50 p-3 text-xs text-red-700 dark:text-red-300">
+            <div className="flex items-start gap-2 rounded-lg bg-danger-soft p-3 text-xs text-danger">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{errorMsg}</span>
             </div>
@@ -378,7 +412,7 @@ export function CreateStudentReposPanel({ orgName }: { orgName: string }) {
 
           {/* 명단 출처: 로컬 파일과 환경변수 중 무엇을 읽었는지 */}
           {preview?.rosterConfigured && (
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-fg-3">
               명단 출처:{" "}
               <strong>
                 {preview.rosterSource === "file"
@@ -392,7 +426,7 @@ export function CreateStudentReposPanel({ orgName }: { orgName: string }) {
           {/* 연결될 과제 */}
           {preview?.rosterConfigured &&
             (preview.existingAssignment ? (
-              <div className="flex items-start gap-2 rounded-lg bg-blue-50 dark:bg-blue-950/50 p-3 text-xs text-blue-800 dark:text-blue-200">
+              <div className="flex items-start gap-2 rounded-lg bg-chip p-3 text-xs text-fg-2">
                 <Info className="w-4 h-4 shrink-0" />
                 <span>
                   기존 과제 <strong>&ldquo;{preview.existingAssignment.title}&rdquo;</strong>에 추가됩니다.
@@ -400,29 +434,29 @@ export function CreateStudentReposPanel({ orgName }: { orgName: string }) {
                 </span>
               </div>
             ) : (
-              <div className="space-y-3 rounded-lg border border-indigo-100 dark:border-indigo-900/60 bg-indigo-50/40 dark:bg-indigo-950/30 p-3">
-                <p className="text-xs font-semibold text-indigo-800 dark:text-indigo-200">
+              <div className="space-y-3 rounded-lg border border-line p-3">
+                <p className="text-xs font-semibold text-chart">
                   새 과제가 만들어집니다
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <label className="space-y-1 text-xs">
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">과제 제목</span>
+                    <span className="font-semibold text-fg-2">과제 제목</span>
                     <input
                       type="text"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       disabled={running || Boolean(assignmentId)}
-                      className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs"
+                      className="w-full rounded-lg bg-chip px-3 py-2 text-xs text-fg focus:outline-none focus:ring-2 focus:ring-brand/30"
                     />
                   </label>
                   <label className="space-y-1 text-xs">
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">마감 일시</span>
+                    <span className="font-semibold text-fg-2">마감 일시</span>
                     <input
                       type="datetime-local"
                       value={deadline}
                       onChange={(e) => setDeadline(e.target.value)}
                       disabled={running || Boolean(assignmentId)}
-                      className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs"
+                      className="w-full rounded-lg bg-chip px-3 py-2 text-xs text-fg focus:outline-none focus:ring-2 focus:ring-brand/30"
                     />
                   </label>
                 </div>
@@ -452,14 +486,14 @@ export function CreateStudentReposPanel({ orgName }: { orgName: string }) {
             <>
               {preview?.templates && preview.templates.length > 0 && (
                 <div className="flex items-center gap-2 text-xs">
-                  <label className="font-semibold text-slate-700 dark:text-slate-300">
+                  <label className="font-semibold text-fg-2">
                     템플릿 repo (선택)
                   </label>
                   <select
                     value={templateRepo}
                     onChange={(e) => setTemplateRepo(e.target.value)}
                     disabled={running}
-                    className="rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-2 py-1.5 text-xs"
+                    className="rounded-lg bg-chip px-2 py-1.5 text-xs text-fg"
                   >
                     <option value="">사용 안 함 (README만 생성)</option>
                     {preview.templates.map((t) => (
@@ -471,9 +505,9 @@ export function CreateStudentReposPanel({ orgName }: { orgName: string }) {
                 </div>
               )}
 
-              <div className="rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto">
+              <div className="rounded-lg border border-line overflow-x-auto">
                 <table className="w-full text-xs">
-                  <thead className="bg-slate-50 dark:bg-slate-950/60 text-slate-500">
+                  <thead className="text-fg-3">
                     <tr>
                       <th className="px-3 py-2 text-left font-semibold">학번</th>
                       <th className="px-3 py-2 text-left font-semibold">이름</th>
@@ -482,7 +516,7 @@ export function CreateStudentReposPanel({ orgName }: { orgName: string }) {
                       <th className="px-3 py-2 text-left font-semibold">상태</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tbody className="divide-y divide-line">
                     {students.map((s) => {
                       const r = results[s.studentNo];
                       return (
@@ -497,7 +531,7 @@ export function CreateStudentReposPanel({ orgName }: { orgName: string }) {
                             {r ? (
                               <span
                                 className={`inline-flex items-center gap-1 ${
-                                  r.ok ? "text-emerald-600" : "text-red-600"
+                                  r.ok ? "text-brand" : "text-danger"
                                 }`}
                               >
                                 {r.ok ? (
@@ -508,9 +542,9 @@ export function CreateStudentReposPanel({ orgName }: { orgName: string }) {
                                 {resultLabel(r)}
                               </span>
                             ) : s.exists ? (
-                              <span className="text-slate-500">이미 있음 (등록·권한만 확인)</span>
+                              <span className="text-fg-3">이미 있음 (등록·권한만 확인)</span>
                             ) : (
-                              <span className="text-indigo-600">생성 예정</span>
+                              <span className="text-chart">생성 예정</span>
                             )}
                           </td>
                         </tr>
@@ -523,13 +557,13 @@ export function CreateStudentReposPanel({ orgName }: { orgName: string }) {
           )}
 
           {preview?.rosterConfigured && students.length === 0 && (
-            <p className="text-xs text-slate-500">명단에 유효한 학생이 없습니다.</p>
+            <p className="text-xs text-fg-3">명단에 유효한 학생이 없습니다.</p>
           )}
         </div>
 
         {canRun && (
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-800 px-5 py-3">
-            <span className="text-xs text-slate-500">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-5 py-3">
+            <span className="text-xs text-fg-3">
               {running
                 ? `진행 중... ${doneCount}/${students.length}`
                 : doneCount > 0
@@ -541,7 +575,7 @@ export function CreateStudentReposPanel({ orgName }: { orgName: string }) {
                 <button
                   type="button"
                   onClick={() => runProvision(failedNos)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-red-200 dark:border-red-900 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50"
+                  className="inline-flex items-center gap-1 rounded-lg bg-danger-soft px-3 py-2 text-xs font-semibold text-danger hover:brightness-95"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>실패한 학생만 다시 시도</span>
@@ -550,7 +584,7 @@ export function CreateStudentReposPanel({ orgName }: { orgName: string }) {
               {!running && assignmentId && doneCount > 0 ? (
                 <Link
                   href={`/admin/assignments/${assignmentId}`}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-xs font-semibold text-white hover:brightness-110"
                 >
                   <span>과제 관리로 이동</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -560,7 +594,7 @@ export function CreateStudentReposPanel({ orgName }: { orgName: string }) {
                   type="button"
                   onClick={() => runProvision(students.map((s) => s.studentNo))}
                   disabled={running}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-xs font-semibold text-white hover:brightness-110 disabled:opacity-50"
                 >
                   {running ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -576,4 +610,5 @@ export function CreateStudentReposPanel({ orgName }: { orgName: string }) {
       </div>
     </div>
   );
+  }
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Play, Loader2, CheckCircle2, Sparkles } from "lucide-react";
+import { Play, Loader2, CheckCircle2 } from "lucide-react";
 
 interface BatchAnalyzeButtonProps {
   assignmentId: string;
@@ -97,40 +97,32 @@ export function BatchAnalyzeButton({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {needsInitialAnalysis && (
-        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950/70 px-2.5 py-1 text-[11px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-500/30 animate-pulse">
-          <span>미분석 {unanalyzedCount}명 · 먼저 클릭해주세요 👉</span>
-        </span>
-      )}
-      {loading && progressMsg && (
-        <span className="text-xs text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1.5 animate-pulse">
-          <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-          <span>{progressMsg}</span>
-        </span>
-      )}
-      {!loading && resultMsg && (
-        <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
-          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-          <span>{resultMsg}</span>
-        </span>
-      )}
+    // 진행·결과 문구는 버튼 바로 아래 한 줄 (헤더 버튼 줄의 정렬을 흔들지 않도록 absolute)
+    <div className="relative">
       <button
+        type="button"
         onClick={handleBatchAnalyze}
         disabled={loading || totalCount === 0}
-        className={`inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-500 transition disabled:opacity-50 ${
-          needsInitialAnalysis
-            ? "ring-4 ring-blue-500/30 dark:ring-blue-400/30 shadow-blue-500/20 shadow-md"
-            : ""
+        title={needsInitialAnalysis ? `미분석 ${unanalyzedCount}명 · 먼저 분석해 주세요` : undefined}
+        className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-brand px-4 py-2.5 text-[13px] font-semibold text-white transition hover:brightness-110 disabled:opacity-50 ${
+          needsInitialAnalysis ? "ring-4 ring-brand/25" : ""
         }`}
       >
-        {loading ? (
-          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-        ) : (
-          <Play className="w-3.5 h-3.5 fill-current" />
-        )}
-        <span>{loading ? "분석 중..." : "분석하기"}</span>
+        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5 fill-current" />}
+        {loading ? "분석 중..." : "분석하기"}
       </button>
+      {loading && progressMsg && (
+        <p role="status" className="absolute left-0 top-full mt-2 flex items-center gap-1 whitespace-nowrap text-[12px] text-fg-2">
+          <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+          {progressMsg}
+        </p>
+      )}
+      {!loading && resultMsg && (
+        <p role="status" className="absolute left-0 top-full mt-2 flex items-center gap-1 whitespace-nowrap text-[12px] text-brand">
+          <CheckCircle2 className="h-3 w-3 shrink-0" />
+          {resultMsg}
+        </p>
+      )}
     </div>
   );
 }
