@@ -95,3 +95,43 @@ export function splitCommitMessage(message: string | null | undefined): {
   if (idx === -1) return { title: text, body: "" };
   return { title: text.slice(0, idx).trim(), body: text.slice(idx + 1).trim() };
 }
+
+/** KST 기준 "11월 24일 오전 2:48" (withYear면 "2026년 11월 24일 오전 2:48") */
+export function formatKstDateTime(iso: string | null | undefined, withYear = false): string {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    ...(withYear ? { year: "numeric" as const } : {}),
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(d);
+}
+
+/** KST 기준 "11월 24일", withWeekday면 "11월 24일 (화)" */
+export function formatKstMonthDay(iso: string | null | undefined, withWeekday = false): string {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  const parts = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "numeric",
+    day: "numeric",
+    weekday: "short",
+  }).formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  const base = `${get("month")}월 ${get("day")}일`;
+  return withWeekday ? `${base} (${get("weekday")})` : base;
+}
+
+/** 마감까지 남은 날짜 수 (KST 달력 기준, 오늘 마감이면 0, 지났으면 음수) */
+export function kstDaysUntil(iso: string, nowMs: number): number | null {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return null;
+  const KST = 9 * HOUR;
+  const dayIndex = (ms: number) => Math.floor((ms + KST) / DAY);
+  return dayIndex(t) - dayIndex(nowMs);
+}
