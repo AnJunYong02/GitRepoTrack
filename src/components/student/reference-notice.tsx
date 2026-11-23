@@ -5,6 +5,8 @@ interface ReferenceNoticeProps {
   subject: string;
   /** 채점 점수와 다를 수 있는 대상 (예: "분석 결과", "순위·분석 결과") */
   target?: string;
+  /** card: 순위표용 강조 박스(기본), inline: 분석 대시보드용 한 줄 */
+  variant?: "card" | "inline";
 }
 
 /**
@@ -12,7 +14,19 @@ interface ReferenceNoticeProps {
  * 자동 분석 결과·순위가 실제 과제 채점 점수와 다를 수 있음을 강조한다.
  * hooks가 없어 서버·클라이언트 컴포넌트 어디서든 쓸 수 있다.
  */
-export function ReferenceNotice({ subject, target = "분석 결과" }: ReferenceNoticeProps) {
+export function ReferenceNotice({ subject, target = "분석 결과", variant = "card" }: ReferenceNoticeProps) {
+  if (variant === "inline") {
+    return (
+      <p role="note" aria-label={`${subject}는 참고용입니다.`} className="flex items-start gap-2.5 text-[13px] text-fg-2">
+        <span className="mt-px flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-danger-soft text-[11px] font-bold text-danger">
+          !
+        </span>
+        <span>
+          <strong className="font-semibold text-danger">참고용</strong> · 여기 표시되는 {target}는 실제 과제 채점 점수와 다를 수 있어요.
+        </span>
+      </p>
+    );
+  }
   return (
     <div
       role="note"

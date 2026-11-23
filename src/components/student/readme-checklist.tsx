@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, XCircle, AlertCircle, Info, ClipboardCopy, Check } from "lucide-react";
+import { Check, ClipboardCopy } from "lucide-react";
 import { buildMarkdownHeadings } from "@/lib/student/time-utils";
 
 interface ReadmeChecklistProps {
@@ -17,7 +17,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
       return true;
     }
   } catch {
-    // fall through to legacy fallback
+    // 아래 예전 방식으로 재시도
   }
   try {
     const ta = document.createElement("textarea");
@@ -34,12 +34,12 @@ async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-export function ReadmeChecklist({
-  satisfied,
-  missingKeywords,
-  details,
-}: ReadmeChecklistProps) {
-  // "all" = 일괄 복사 완료, 그 외 문자열 = 해당 키워드 개별 복사 완료, "error" = 실패
+const MATCH_RULE =
+  "README 어디에든 키워드 문구가 있으면 통과로 판정합니다 (대소문자·띄어쓰기 무시). 철자나 특수문자가 다르면 감지되지 않을 수 있어요.";
+
+/** README 필수 키워드 검사: 통과 | 미감지 두 열 (미감지 키워드는 클릭하면 "## 키워드" 복사) */
+export function ReadmeChecklist({ details }: ReadmeChecklistProps) {
+  // "all" = 일괄 복사 완료, 그 외 문자열 = 해당 키워드 복사 완료, "error" = 실패
   const [copied, setCopied] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -57,180 +57,124 @@ export function ReadmeChecklist({
   };
 
   const safeDetails = Array.isArray(details) ? details : [];
-  const totalCount = safeDetails.length;
   const passedItems = safeDetails.filter((d) => d.found);
   const failedItems = safeDetails.filter((d) => !d.found);
-  const passedCount = passedItems.length;
+  const total = safeDetails.length;
 
   return (
-    <div className="neu-hover h-full space-y-5 rounded-[28px] bg-surface p-6 shadow-neu">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-ink/80">
-          <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-          README 필수 키워드 검사 결과
-        </h3>
-        {totalCount > 0 && (
-          <span
-            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-              satisfied
-                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 ring-1 ring-emerald-600/20"
-                : "bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-300 ring-1 ring-red-600/20"
-            }`}
-          >
-            {satisfied ? (
-              <>
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>{passedCount}/{totalCount}개 통과 (전체 충족)</span>
-              </>
-            ) : (
-              <>
-                <XCircle className="w-3.5 h-3.5" />
-                <span>
-                  {passedCount}/{totalCount}개 통과 ({missingKeywords.length}개 부족)
-                </span>
-              </>
-            )}
+    <section aria-label="README 필수 키워드 검사" className="min-w-0 space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <h2 className="text-[20px] font-bold tracking-tight text-fg" title={MATCH_RULE}>
+          README 필수 키워드 검사
+        </h2>
+        {total > 0 && (
+          <span className="text-[12px] text-fg-3">
+            {total}개 중 {passedItems.length}개 통과
+            {failedItems.length > 0 && ` · ${failedItems.length}개 부족`}
           </span>
         )}
       </div>
 
-
-      {totalCount === 0 ? (
-        <div className="rounded-2xl p-4 text-xs text-muted shadow-neu-inset">
-          설정된 README 필수 키워드가 없거나 아직 분석 전입니다.
-        </div>
+      {total === 0 ? (
+        <p className="border-y border-line py-10 text-center text-[13px] text-fg-3">
+          설정된 README 필수 키워드가 없거나 아직 분석 전이에요.
+        </p>
       ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-            {/* Left Column: Passed Items */}
-            <div className="rounded-3xl p-4 space-y-3 shadow-neu-inset">
-              <div className="flex items-center justify-between pb-1">
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <span>통과 항목</span>
-                </span>
-                <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-200">
-                  {passedItems.length}개
-                </span>
-              </div>
+        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2">
+          {/* 통과 */}
+          <div>
+            <ColumnHeader label="통과" count={passedItems.length} tone="ok" />
+            {passedItems.length === 0 ? (
+              <p className="py-8 text-center text-[13px] text-fg-3">아직 통과한 키워드가 없어요.</p>
+            ) : (
+              <ul>
+                {passedItems.map((item, idx) => (
+                  <li
+                    key={`${item.keyword}-${idx}`}
+                    className="flex min-h-[64px] items-center justify-between gap-3 border-b border-line py-4 text-[14px] text-fg"
+                  >
+                    <span className="break-words">{item.keyword}</span>
+                    <span className="inline-flex shrink-0 items-center gap-1 text-[12px] font-semibold text-brand">
+                      <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+                      통과
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
-              {passedItems.length === 0 ? (
-                <div className="py-6 text-center text-xs text-muted">
-                  아직 통과한 키워드가 없습니다.
-                </div>
-              ) : (
-                <div className="space-y-2 max-h-[420px] overflow-y-auto p-1">
-                  {passedItems.map((item, idx) => (
-                    <div
-                      key={`${item.keyword}-${idx}`}
-                      className="flex items-center justify-between gap-2 rounded-2xl bg-surface p-3 text-xs text-ink shadow-neu-sm"
-                    >
-                      <span className="font-medium break-all">{item.keyword}</span>
-                      <span className="inline-flex items-center gap-1 shrink-0 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>통과</span>
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Right Column: Failed / Unpassed Items */}
-            <div className="rounded-3xl p-4 space-y-3 shadow-neu-inset">
-              <div className="flex items-center justify-between pb-1">
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-red-700 dark:text-red-300">
-                  <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
-                  <span>불통과 항목 (미감지)</span>
-                </span>
-                <span className="rounded-full bg-red-100 dark:bg-red-900/60 px-2 py-0.5 text-[11px] font-bold text-red-800 dark:text-red-200">
-                  {failedItems.length}개
-                </span>
-              </div>
-
-              {failedItems.length > 0 && (
+          {/* 미감지 */}
+          <div>
+            <ColumnHeader label="미감지" count={failedItems.length} tone="bad" />
+            {failedItems.length === 0 ? (
+              <p className="py-8 text-center text-[13px] font-medium text-brand">모든 필수 키워드를 통과했어요.</p>
+            ) : (
+              <>
+                <ul>
+                  {failedItems.map((item, idx) => {
+                    const key = `kw:${item.keyword}-${idx}`;
+                    const isCopied = copied === key;
+                    return (
+                      <li key={key} className="border-b border-line">
+                        <button
+                          type="button"
+                          title={`클릭하면 "## ${item.keyword}" 양식이 복사됩니다`}
+                          onClick={() => handleCopy(key, [item.keyword])}
+                          className="group flex min-h-[64px] w-full items-center justify-between gap-3 py-4 text-left text-[14px] text-fg"
+                        >
+                          <span className="break-words">{item.keyword}</span>
+                          {isCopied ? (
+                            <span className="inline-flex shrink-0 items-center gap-1 text-[12px] font-semibold text-brand">
+                              <Check className="h-3.5 w-3.5" />
+                              복사됨
+                            </span>
+                          ) : (
+                            <span className="shrink-0 text-[12px] font-semibold text-danger">
+                              <span className="group-hover:hidden">미감지</span>
+                              <span className="hidden group-hover:inline">## 복사</span>
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
                 <button
                   type="button"
                   onClick={() => handleCopy("all", failedItems.map((i) => i.keyword))}
-                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-2xl bg-surface px-3 py-2.5 text-xs font-semibold text-red-700 dark:text-red-300 shadow-neu-sm hover:shadow-neu-inset transition"
+                  title={MATCH_RULE}
+                  className="mt-10 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-danger-soft px-4 py-3 text-[13px] font-semibold text-danger transition hover:brightness-95"
                 >
                   {copied === "all" ? (
                     <>
-                      <Check className="w-3.5 h-3.5" />
-                      <span>복사 완료! README에 붙여넣으세요</span>
+                      <Check className="h-3.5 w-3.5" />
+                      복사 완료! README에 붙여넣으세요
                     </>
                   ) : copied === "error" ? (
-                    <span>복사에 실패했습니다. 브라우저 권한을 확인해주세요</span>
+                    "복사에 실패했어요. 브라우저 권한을 확인해 주세요"
                   ) : (
                     <>
-                      <ClipboardCopy className="w-3.5 h-3.5" />
-                      <span>미감지 키워드 마크다운 일괄 복사 ({failedItems.length}개)</span>
+                      <ClipboardCopy className="h-3.5 w-3.5" />
+                      미감지 키워드 마크다운 일괄 복사 ({failedItems.length}개)
                     </>
                   )}
                 </button>
-              )}
-
-              {failedItems.length === 0 ? (
-                <div className="py-6 text-center text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                  모든 필수 키워드를 통과
-                </div>
-              ) : (
-                <div className="space-y-2 max-h-[420px] overflow-y-auto p-1">
-                  {failedItems.map((item, idx) => {
-                    const itemKey = `kw:${item.keyword}-${idx}`;
-                    const isCopied = copied === itemKey;
-                    return (
-                      <button
-                        type="button"
-                        key={`${item.keyword}-${idx}`}
-                        title={`클릭하면 "## ${item.keyword}" 양식이 복사됩니다`}
-                        onClick={() => handleCopy(itemKey, [item.keyword])}
-                        className="group w-full flex items-center justify-between gap-2 rounded-2xl bg-surface p-3 text-left text-ink text-xs shadow-neu-sm hover:shadow-neu-inset transition cursor-pointer"
-                      >
-                        <span className="font-medium break-all">{item.keyword}</span>
-                        {isCopied ? (
-                          <span className="inline-flex items-center gap-1 shrink-0 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                            <Check className="w-3.5 h-3.5" />
-                            <span>복사됨!</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 shrink-0 text-[11px] font-semibold text-red-600 dark:text-red-400">
-                            <AlertCircle className="w-3.5 h-3.5 group-hover:hidden" />
-                            <ClipboardCopy className="w-3.5 h-3.5 hidden group-hover:inline" />
-                            <span className="group-hover:hidden">미감지 (부족)</span>
-                            <span className="hidden group-hover:inline">## 복사</span>
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+              </>
+            )}
           </div>
-
-          {!satisfied && missingKeywords.length > 0 && (
-            <p className="text-[11px] text-muted pt-1">
-              💡 인식이 안 된 키워드가 있다면 README 파일에 해당 문구(예:{" "}
-              <code className="rounded-md px-1 py-0.5 font-mono shadow-neu-inset">
-                {missingKeywords[0]}
-              </code>
-              )를 포함해 작성한 뒤 다시 push하고 <strong>[GitHub 새로고침]</strong>을 눌러보세요.
-            </p>
-          )}
-        </>
-      )}
-        {/* Accuracy Notice Box */}
-        <div className="flex items-start gap-2 rounded-2xl p-4 text-xs text-ink shadow-neu-inset">
-            <Info className="w-4 h-4 shrink-0 mt-0.5 text-lilac-ink" />
-            <div className="space-y-0.5 leading-relaxed">
-                <p className="font-semibold">README 키워드 분석 기준</p>
-                <p className="text-[11px] text-muted">
-                    README 어디에든 키워드 문구가 포함되어 있으면 충족으로 판정합니다. (대소문자·띄어쓰기 무시)<br/>
-                    철자나 특수문자가 다르면 감지되지 않을 수 있으니 키워드를 그대로 적어주세요.
-                </p>
-            </div>
         </div>
+      )}
+    </section>
+  );
+}
+
+function ColumnHeader({ label, count, tone }: { label: string; count: number; tone: "ok" | "bad" }) {
+  const color = tone === "ok" ? "border-brand text-brand" : "border-danger text-danger";
+  return (
+    <div className={`flex items-center justify-between border-b-2 pb-3 ${color}`}>
+      <span className="text-[14px] font-bold">{label}</span>
+      <span className="text-[12px] font-semibold">{count}개</span>
     </div>
   );
 }

@@ -3,13 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { BackLink } from "@/components/navigation/back-link";
-import { RefreshCw, Play, Clock, AlertCircle, GitBranch, ArrowLeft, ExternalLink, Trophy, Download, GitCommit, FileText } from "lucide-react";
+import { AlertCircle, AlertTriangle, ArrowLeft, ArrowUpRight, Check, Download, Play, RefreshCw, Trophy, X } from "lucide-react";
 import { ReadmeChecklist } from "@/components/student/readme-checklist";
 import { ReferenceNotice } from "@/components/student/reference-notice";
 import { CommitChart } from "@/components/student/commit-chart";
 import { CommitTimeline } from "@/components/student/commit-timeline";
 import { DeadlineCountdown } from "@/components/student/deadline-countdown";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { weekTitle } from "@/lib/student/student-assignments";
+import { formatKstDateTime } from "@/lib/student/time-utils";
 
 interface ClientDashboardViewProps {
   studentRepoId: string;
@@ -24,34 +25,35 @@ interface ClientDashboardViewProps {
     snapshotCommitCount: number | null;
     /** 현재 기준의 최소 커밋 수 (0이면 기준 없음 → 최소 1개) */
     minCommits: number;
+    /** 주차 번호 (없으면 과제 제목 사용) */
+    weekNo: number | null;
   };
 }
 
+const BTN =
+  "inline-flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-3 text-[13px] font-semibold transition disabled:opacity-50";
+const BTN_GRAY = `${BTN} bg-chip text-fg-2 hover:text-fg`;
+
 export function ClientDashboardView({ studentRepoId, isOrgOwner = false, initialData }: ClientDashboardViewProps) {
-  const [data, setData] = useState(initialData);
+  const data = initialData;
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ text: string; type: "error" | "success" } | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   const handleAnalyze = async (forceRefresh: boolean = false) => {
     setLoading(true);
     setMessage(null);
-
     try {
       const res = await fetch(`/api/repos/${studentRepoId}/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ forceRefresh }),
       });
-
       const json = await res.json();
-      if (!res.ok) {
-        throw new Error(json.error || "분석 요청에 실패했습니다.");
-      }
-
-      // Re-fetch latest status
+      if (!res.ok) throw new Error(json.error || "분석 요청에 실패했습니다.");
+      // 최신 결과 다시 불러오기
       window.location.reload();
     } catch (err: any) {
-      setMessage({ text: err.message, type: "error" });
+      setMessage(err.message);
     } finally {
       setLoading(false);
     }
@@ -60,17 +62,15 @@ export function ClientDashboardView({ studentRepoId, isOrgOwner = false, initial
   const evalData = data.evaluation;
   const isSubmitted = evalData?.submitted ?? false;
   const readmeResults = evalData?.readme_results || { satisfied: false, missingKeywords: [], details: [] };
-  const repoOrg =
-    data.assignment?.org_name ||
-    (data.repo?.full_name ? data.repo.full_name.split("/")[0] : "");
+  const repoOrg = data.assignment?.org_name || (data.repo?.full_name ? data.repo.full_name.split("/")[0] : "");
+  const branch = data.assignment?.branch || "main";
 
-  // 요약 카드 표시 값 — 학생 대시보드 목록(dashboard/page.tsx)과 같은 규칙
+  // 요약 값 — 학생 대시보드 목록(student-assignments.ts)과 같은 규칙
   const hasEvaluation = Boolean(evalData);
   const hasSnapshot = Boolean(data.status?.latest_snapshot_id) && data.snapshotCommitCount !== null;
   const commitCount = data.snapshotCommitCount ?? 0;
   const commitTarget = data.minCommits > 0 ? data.minCommits : 1;
   const commitSatisfied = hasSnapshot && commitCount > 0 && commitCount >= commitTarget;
-  const commitShortfall = Math.max(0, commitTarget - commitCount);
 
   const readmeDetails: { keyword: string; found: boolean }[] = Array.isArray(readmeResults.details)
     ? readmeResults.details
@@ -79,177 +79,165 @@ export function ClientDashboardView({ studentRepoId, isOrgOwner = false, initial
   const readmePassed = readmeDetails.filter((d) => d.found).length;
 
   const commitView: SummaryView = !hasSnapshot
-    ? { tone: "idle", value: "-", unit: "", note: "분석 필요", percent: 0 }
+    ? { tone: "idle", value: "-", unit: `/${commitTarget}개`, note: "분석 필요", percent: 0 }
     : {
-        tone: commitSatisfied ? "ok" : commitCount === 0 ? "bad" : "warn",
+        tone: commitSatisfied ? "ok" : "bad",
         value: String(commitCount),
-        unit: `/ ${commitTarget}개`,
+        unit: `/${commitTarget}개`,
         note: commitSatisfied
-          ? "✓ 커밋 조건 충족"
+          ? "커밋 조건 충족"
           : commitCount === 0
-          ? "✕ 커밋 없음"
-          : `⚠ ${commitShortfall}개 부족`,
+          ? "커밋 없음"
+          : `${commitTarget - commitCount}개 부족`,
         percent: Math.min(100, Math.round((commitCount / commitTarget) * 100)),
-        caption: data.minCommits > 0 ? `기준 ${data.minCommits}개 중` : "기준 없음 · 최소 1개",
       };
 
   const keywordView: SummaryView = !hasEvaluation
     ? { tone: "idle", value: "-", unit: "", note: "분석 필요", percent: 0 }
     : readmeTotal > 0
     ? {
-        tone: readmeResults.satisfied ? "ok" : "warn",
+        tone: readmeResults.satisfied ? "ok" : "bad",
         value: String(readmePassed),
-        unit: `/ ${readmeTotal}개`,
-        note: readmeResults.satisfied ? "✓ 키워드 모두 사용" : `⚠ ${readmeTotal - readmePassed}개 미사용`,
+        unit: `/${readmeTotal}개`,
+        note: readmeResults.satisfied ? "키워드 모두 사용" : `${readmeTotal - readmePassed}개 미사용`,
         percent: Math.round((readmePassed / readmeTotal) * 100),
-        caption: `필수 키워드 ${readmeTotal}개 중`,
       }
     : {
-        tone: readmeResults.satisfied ? "ok" : "warn",
+        tone: readmeResults.satisfied ? "ok" : "bad",
         value: readmeResults.satisfied ? "✓" : "✕",
         unit: "",
-        note: readmeResults.satisfied ? "✓ README 확인됨" : "⚠ README.md 누락",
+        note: readmeResults.satisfied ? "README 확인됨" : "README.md 누락",
         percent: readmeResults.satisfied ? 100 : 0,
-        caption: "키워드 기준 없음",
       };
 
-  const ACTION_BTN =
-    "inline-flex shrink-0 items-center gap-1.5 rounded-2xl bg-surface px-3.5 py-3 text-xs font-semibold text-ink shadow-neu-sm transition hover:shadow-neu-inset disabled:opacity-50";
-  const CARD = "neu-hover rounded-[28px] bg-surface shadow-neu";
+  const backHref =
+    isOrgOwner && data.assignment?.id
+      ? `/admin/assignments/${data.assignment.id}`
+      : repoOrg
+      ? `/dashboard/assignments?org=${encodeURIComponent(repoOrg)}`
+      : "/dashboard";
 
   return (
-    <div className="space-y-8">
-      {/* 헤더: 뒤로가기 · 제목 · repo 링크 + 동작 버튼 */}
-      <header className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0 space-y-3">
-          <BackLink
-            fallbackHref={
-              isOrgOwner && data.assignment?.id
-                ? `/admin/assignments/${data.assignment.id}`
-                : repoOrg
-                ? `/dashboard?org=${encodeURIComponent(repoOrg)}`
-                : "/dashboard"
-            }
-            className="inline-flex items-center gap-1.5 rounded-2xl bg-surface px-3.5 py-2 text-xs font-medium text-ink/80 shadow-neu-sm transition hover:text-ink hover:shadow-neu-inset"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>{isOrgOwner ? "뒤로가기 (과제 관리 화면)" : "뒤로가기 (내 과제 목록)"}</span>
-          </BackLink>
-
-          <h1 className="text-3xl font-normal tracking-tight text-ink sm:text-4xl lg:text-3xl 2xl:text-4xl">{data.assignment?.title}</h1>
-          <a
-            href={`https://github.com/${data.repo.full_name}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex flex-wrap items-center gap-1.5 break-all font-mono text-xs text-muted hover:text-ink hover:underline sm:text-sm lg:text-xs 2xl:text-sm"
-          >
-            <GitBranch className="w-3.5 h-3.5 shrink-0" />
-            <span>{data.repo.full_name}</span>
-            <span>· {data.assignment?.branch || "main"}</span>
-            <ExternalLink className="w-3 h-3 shrink-0 opacity-75" />
-          </a>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5 lg:shrink-0 lg:flex-nowrap lg:justify-end">
-          <button onClick={() => handleAnalyze(false)} disabled={loading} className={ACTION_BTN}>
-            <Play className="w-3.5 h-3.5 text-lilac-ink" />
-            <span>분석하기</span>
-          </button>
-          <button onClick={() => handleAnalyze(true)} disabled={loading} className={ACTION_BTN}>
-            <RefreshCw className={`w-3.5 h-3.5 text-lilac-ink ${loading ? "animate-spin" : ""}`} />
-            <span>GitHub 새로고침</span>
-          </button>
-          {/* 본인 Repo ZIP 다운로드 */}
-          <a href={`/api/repos/${studentRepoId}/archive`} className={ACTION_BTN} download>
-            <Download className="w-3.5 h-3.5 text-lilac-ink" />
-            <span>Repo 다운로드 (.zip)</span>
-          </a>
-          {data.assignment?.id && data.assignment?.ranking_mode !== "none" && (
-            <Link href={`/assignments/${data.assignment.id}/leaderboard`} className={ACTION_BTN}>
-              <Trophy className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-              <span>실시간 순위표 보기</span>
-            </Link>
-          )}
-          <ThemeToggle />
-        </div>
-      </header>
-
-      <ReferenceNotice subject="이 분석 결과" />
-
-      {message && (
-        <div
-          className={`flex items-center gap-2 rounded-2xl p-3 text-xs shadow-neu-inset ${
-            message.type === "error"
-              ? "text-red-700 dark:text-red-300"
-              : "text-emerald-700 dark:text-emerald-300"
-          }`}
+    <div className="space-y-10">
+      {/* 헤더 */}
+      <header className="space-y-5">
+        <BackLink
+          fallbackHref={backHref}
+          className="inline-flex items-center gap-1.5 rounded-xl bg-chip px-4 py-2.5 text-[15px] font-semibold text-fg-2 transition hover:text-fg"
         >
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{message.text}</span>
-        </div>
-      )}
+          <ArrowLeft className="h-4 w-4" />
+          <span>{isOrgOwner ? "과제 관리 화면" : "내 과제 목록"}</span>
+        </BackLink>
 
-      {/* 제출 요약: 커밋 · README 키워드 · 마감 준수 (한 카드) */}
-      <section aria-label="제출 요약" className={`${CARD} p-6 sm:p-7`}>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-2 text-sm text-ink/80">
-            <span className={`h-1.5 w-1.5 rounded-full ${isSubmitted ? "bg-accent" : "bg-amber-500"}`} />
-            제출 판정:{" "}
-            <strong className={isSubmitted ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}>
-              {isSubmitted ? "충족 (제출 완료)" : "미충족"}
-            </strong>
-          </span>
-          {data.status?.fetched_at && (
-            <span className="flex items-center gap-1 text-xs text-muted">
-              <Clock className="w-3 h-3" />
-              마지막 갱신: {new Date(data.status.fetched_at).toLocaleString("ko-KR")}
-            </span>
-          )}
-        </div>
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 space-y-3">
+            <h1 className="text-[34px] font-bold tracking-[-0.03em] text-fg sm:text-[42px]">
+              {weekTitle(data.weekNo, data.assignment?.title || "과제")}
+            </h1>
+            <a
+              href={`https://github.com/${data.repo.full_name}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex flex-wrap items-center gap-1.5 [overflow-wrap:anywhere] font-mono text-[13px] text-fg-2 hover:text-fg hover:underline"
+            >
+              {data.repo.full_name} · {branch}
+              <ArrowUpRight className="h-3.5 w-3.5 shrink-0" />
+            </a>
+          </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-3 md:gap-0 md:divide-x md:divide-muted/20">
-          <SummaryColumn label="커밋" icon={<GitCommit className="h-3.5 w-3.5" />} view={commitView} />
-          <SummaryColumn label="README 키워드" icon={<FileText className="h-3.5 w-3.5" />} view={keywordView} />
-          <div className="md:px-6">
-            <DeadlineCountdown
-              deadlineAt={data.assignment?.deadline_at ?? null}
-              commitDates={(data.commits || []).map((c: any) => c.committed_at)}
-              isSubmitted={isSubmitted}
-            />
+          <div className="flex flex-wrap items-center gap-2.5 xl:pt-2">
+            <button onClick={() => handleAnalyze(false)} disabled={loading} className={`${BTN} bg-brand text-white hover:brightness-110`}>
+              <Play className="h-3.5 w-3.5" />
+              분석하기
+            </button>
+            <button onClick={() => handleAnalyze(true)} disabled={loading} className={BTN_GRAY}>
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+              GitHub 새로고침
+            </button>
+            {/* 본인 Repo ZIP 다운로드 */}
+            <a href={`/api/repos/${studentRepoId}/archive`} className={BTN_GRAY} download>
+              <Download className="h-3.5 w-3.5" />
+              Repo 다운로드 (.zip)
+            </a>
+            {data.assignment?.id && data.assignment?.ranking_mode !== "none" && (
+              <Link href={`/assignments/${data.assignment.id}/leaderboard`} className={BTN_GRAY}>
+                <Trophy className="h-4 w-4 text-amber-500" />
+                실시간 순위표
+              </Link>
+            )}
           </div>
         </div>
 
-        {data.status?.stale && (
-          <p className="mt-6 rounded-2xl px-4 py-3 text-xs font-medium text-amber-700 shadow-neu-inset dark:text-amber-400">
-            ⚠️ 최근 push 감지됨 (새로고침을 눌러 최신 반영)
+        <ReferenceNotice subject="이 분석 결과" variant="inline" />
+
+        {message && (
+          <p role="alert" className="flex items-center gap-2 text-[13px] text-danger">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            {message}
           </p>
         )}
-      </section>
+      </header>
 
-      {/* 아래: README 키워드 검사(넓게) + 커밋 추이·이력 */}
-      {/* items-stretch: 두 열 높이를 같게 해서 아래 끝선을 맞춤 */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        <div className="lg:col-span-7 2xl:col-span-8 min-w-0 flex flex-col">
-          <ReadmeChecklist
-            satisfied={readmeResults.satisfied}
-            missingKeywords={readmeResults.missingKeywords}
-            details={readmeResults.details}
+      {/* 판정 + 마지막 갱신 */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {hasEvaluation ? (
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-semibold ${
+                isSubmitted ? "bg-brand-soft text-brand" : "bg-danger-soft text-danger"
+              }`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${isSubmitted ? "bg-brand" : "bg-danger"}`} />
+              {isSubmitted ? "충족" : "미충족"}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-chip px-3 py-1.5 text-[13px] font-semibold text-fg-3">
+              <span className="h-1.5 w-1.5 rounded-full bg-fg-3" />
+              분석 전
+            </span>
+          )}
+          {data.status?.stale && (
+            <span className="text-[12px] text-fg-2">최근 push 감지됨 · GitHub 새로고침으로 최신 반영</span>
+          )}
+        </div>
+        {data.status?.fetched_at && (
+          <span className="text-[12px] text-fg-3">마지막 갱신 {formatKstDateTime(data.status.fetched_at, true)}</span>
+        )}
+      </div>
+
+      {/* 제출 요약 3열 */}
+      <section
+        aria-label="제출 요약"
+        className="-mt-4 grid grid-cols-1 divide-y divide-line border-y border-line md:grid-cols-3 md:divide-x md:divide-y-0"
+      >
+        <SummaryColumn label="커밋" view={commitView} />
+        <SummaryColumn label="README 키워드" view={keywordView} />
+        <div className="py-8 md:px-9">
+          <DeadlineCountdown
+            deadlineAt={data.assignment?.deadline_at ?? null}
+            commitDates={(data.commits || []).map((c: any) => c.committed_at)}
+            isSubmitted={isSubmitted}
           />
         </div>
+      </section>
 
-        <div className="lg:col-span-5 2xl:col-span-4 min-w-0 flex flex-col gap-6">
+      {/* README 키워드 검사 | 커밋 추이 · 이력 */}
+      <div className="grid grid-cols-1 gap-14 pt-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:gap-16">
+        <ReadmeChecklist
+          satisfied={readmeResults.satisfied}
+          missingKeywords={readmeResults.missingKeywords}
+          details={readmeResults.details}
+        />
+        <div className="min-w-0 space-y-14">
           <CommitChart commits={data.commits} />
-          {/* 남는 높이는 커밋 이력 카드가 채움 */}
-          <div className="flex-1 min-h-0">
-            <CommitTimeline commits={data.commits} />
-          </div>
+          <CommitTimeline commits={data.commits} />
         </div>
       </div>
     </div>
   );
 }
 
-type SummaryTone = "ok" | "warn" | "bad" | "idle";
+type SummaryTone = "ok" | "bad" | "idle";
 
 interface SummaryView {
   tone: SummaryTone;
@@ -257,34 +245,33 @@ interface SummaryView {
   unit: string;
   note: string;
   percent: number;
-  caption?: string;
 }
 
 const SUMMARY_TONE: Record<SummaryTone, { text: string; bar: string }> = {
-  ok: { text: "text-emerald-600 dark:text-emerald-400", bar: "bg-emerald-500" },
-  warn: { text: "text-amber-600 dark:text-amber-400", bar: "bg-amber-500" },
-  bad: { text: "text-red-600 dark:text-red-400", bar: "bg-red-500" },
-  idle: { text: "text-muted", bar: "bg-muted/40" },
+  ok: { text: "text-brand", bar: "bg-brand" },
+  bad: { text: "text-danger", bar: "bg-danger" },
+  idle: { text: "text-fg-3", bar: "bg-fg-3" },
 };
 
-/** 요약 카드의 한 칸: 라벨 · 큰 숫자(현재 / 기준) · 진행 바 · 상태 */
-function SummaryColumn({ label, icon, view }: { label: string; icon: React.ReactNode; view: SummaryView }) {
+/** 요약 한 칸: 제목 · 큰 숫자/기준 · 상태 · 진행 바 */
+function SummaryColumn({ label, view }: { label: string; view: SummaryView }) {
   const tone = SUMMARY_TONE[view.tone];
+  const Icon = view.tone === "ok" ? Check : view.tone === "bad" ? AlertTriangle : X;
   return (
-    <div className="space-y-3 md:px-6 md:first:pl-0">
-      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
-        {icon}
-        {label}
-      </span>
-      {view.caption && <p className="text-xs text-muted">{view.caption}</p>}
-      <p className="flex items-baseline gap-2">
-        <span className={`text-5xl font-light tracking-tight ${view.tone === "idle" ? "text-muted" : "text-ink"}`}>
+    <div className="space-y-5 py-8 md:px-9 md:first:pl-0">
+      <h2 className="text-[18px] font-bold text-fg">{label}</h2>
+      <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className={`text-[44px] font-bold leading-none tracking-tight ${view.tone === "idle" ? "text-fg-3" : "text-fg"}`}>
           {view.value}
+          {view.unit && <span className="ml-0.5 text-[18px] font-normal text-fg-3">{view.unit}</span>}
         </span>
-        {view.unit && <span className="text-lg font-light text-muted">{view.unit}</span>}
+        <span className={`inline-flex items-center gap-1 text-[13px] font-semibold ${tone.text}`}>
+          {view.tone !== "idle" && <Icon className="h-3.5 w-3.5" strokeWidth={2.5} />}
+          {view.note}
+        </span>
       </p>
       <div
-        className="h-2 w-full overflow-hidden rounded-full shadow-neu-inset"
+        className="h-1 w-full overflow-hidden rounded-full bg-line"
         role="progressbar"
         aria-label={`${label} 진행률`}
         aria-valuenow={view.percent}
@@ -293,7 +280,6 @@ function SummaryColumn({ label, icon, view }: { label: string; icon: React.React
       >
         <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${view.percent}%` }} />
       </div>
-      <p className={`text-xs font-semibold ${tone.text}`}>{view.note}</p>
     </div>
   );
 }

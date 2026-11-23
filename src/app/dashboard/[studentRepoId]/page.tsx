@@ -1,7 +1,7 @@
-import { StudentSidebar } from "@/components/student/student-sidebar";
-import { SIDEBAR_COOKIE } from "@/components/student/sidebar-cookie";
-import { cookies } from "next/headers";
+import { StudentShell } from "@/components/student/student-shell";
 import { requireStudentRepo } from "@/lib/auth/guards";
+import { loadStudentAssignments } from "@/lib/student/load-student-assignments";
+import { extractWeekNo, leaderboardHrefFor } from "@/lib/student/student-assignments";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { ClientDashboardView } from "./client-view";
 
@@ -11,7 +11,7 @@ export default async function StudentDashboardDetailPage({
   params: Promise<{ studentRepoId: string }>;
 }) {
   const { studentRepoId } = await params;
-  const { profile, repo, isOrgOwner } = await requireStudentRepo(studentRepoId);
+  const { user, profile, repo, isOrgOwner } = await requireStudentRepo(studentRepoId);
 
   // Fetch status
   const { data: status } = await supabaseAdmin
@@ -72,27 +72,32 @@ export default async function StudentDashboardDetailPage({
     commits: commits || [],
     snapshotCommitCount,
     minCommits,
+    weekNo: extractWeekNo(repo.full_name, repo.assignments?.title),
   };
 
   const repoOrg =
     repo.assignments?.org_name ||
     (repo.full_name ? repo.full_name.split("/")[0] : "");
 
+  // 사이드바 "과제 현황" 숫자 (자동 스캔 없이 DB 기준)
+  const sidebarData = repoOrg
+    ? await loadStudentAssignments(user, profile, repoOrg, { allowSync: false })
+    : null;
+
   return (
-    <div className="min-h-screen bg-surface font-display text-ink">
-      <div className="mx-auto flex max-w-[1600px] flex-col gap-6 p-4 sm:p-6 lg:flex-row lg:gap-10 lg:pr-10">
-        <StudentSidebar
-          activeOrg={repoOrg}
-          isOwner={isOrgOwner}
-          githubLogin={profile?.github_login}
-          avatarUrl={profile?.avatar_url}
-          active="none"
-          defaultCollapsed={(await cookies()).get(SIDEBAR_COOKIE)?.value === "collapsed"}
-        />
-        <main className="min-w-0 flex-1 lg:py-6">
-          <ClientDashboardView studentRepoId={studentRepoId} isOrgOwner={isOrgOwner} initialData={initialData} />
-        </main>
-      </div>
-    </div>
+    <StudentShell
+      sidebar={{
+        activeOrg: repoOrg || undefined,
+        isOwner: isOrgOwner,
+        githubLogin: profile?.github_login,
+        avatarUrl: profile?.avatar_url,
+        studentNo: sidebarData?.studentNo,
+        status: sidebarData?.counts,
+        active: "assignments",
+        leaderboardHref: leaderboardHrefFor(sidebarData?.current),
+      }}
+    >
+      <ClientDashboardView studentRepoId={studentRepoId} isOrgOwner={isOrgOwner} initialData={initialData} />
+    </StudentShell>
   );
 }
