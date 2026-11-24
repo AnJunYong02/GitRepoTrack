@@ -9,6 +9,8 @@ import { formatKstDateTime } from "@/lib/student/time-utils";
 import { BackLink } from "@/components/navigation/back-link";
 import { StudentShell } from "@/components/student/student-shell";
 import { ReferenceNotice } from "@/components/student/reference-notice";
+import { LeaderboardWeekSelect } from "@/components/student/leaderboard-week-select";
+import { buildWeekOptions } from "@/lib/assignments/leaderboard-weeks";
 
 /** 금·은·동 (글자색 · 1~3위 행 배경) */
 const MEDAL = [
@@ -195,8 +197,13 @@ export default async function LeaderboardPage({
   const fullLeaderboard = [...qualifiedList, ...unqualifiedList];
 
   const total = items.length;
-  const qualifiedCount = qualifiedList.length;
-  const qualifiedPct = total > 0 ? Math.round((qualifiedCount / total) * 100) : 0;
+
+  // 주차 드롭다운: 같은 org의 과제 목록
+  const { data: orgAssignments } = await supabaseAdmin
+    .from("assignments")
+    .select("id, title, deadline_at, ranking_mode")
+    .eq("org_name", org);
+  const weekOptions = buildWeekOptions(orgAssignments || [], { isOwner: isOrgOwner });
 
   const backHref = isOrgOwner
     ? `/admin/assignments/${assignment.id}`
@@ -232,45 +239,14 @@ export default async function LeaderboardPage({
             {org}
             {assignment.deadline_at && ` · 마감 ${formatKstDateTime(assignment.deadline_at)}`}
           </p>
+          {weekOptions.length >= 2 && (
+            <LeaderboardWeekSelect options={weekOptions} currentId={assignment.id} />
+          )}
         </div>
         <ReferenceNotice subject="이 순위표" target="순위·분석 결과" variant="inline" />
       </header>
 
-      {/* 2. 요약 */}
-      <section aria-label="순위 요약" className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
-        <div className="flex gap-14">
-          <div>
-            <p className="text-[44px] font-bold leading-none tracking-tight tabular-nums text-brand">{qualifiedCount}</p>
-            <p className="mt-3 text-[13px] text-fg-2">순위 등재</p>
-          </div>
-          <div>
-            <p className="text-[44px] font-bold leading-none tracking-tight tabular-nums text-fg-3">
-              {total - qualifiedCount}
-            </p>
-            <p className="mt-3 text-[13px] text-fg-2">조건 미달</p>
-          </div>
-        </div>
-        <div className="w-full space-y-3 pt-4 lg:w-[440px]">
-          <div className="flex items-center justify-between text-[12px]">
-            <span className="text-fg-2">등재 비율</span>
-            <span className="font-semibold text-brand">
-              총 {total}명 중 {qualifiedCount}명 등재 · {qualifiedPct}%
-            </span>
-          </div>
-          <div
-            className="h-1.5 w-full overflow-hidden rounded-full bg-line"
-            role="progressbar"
-            aria-label="순위 등재 비율"
-            aria-valuenow={qualifiedPct}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          >
-            <div className="h-full rounded-full bg-brand" style={{ width: `${qualifiedPct}%` }} />
-          </div>
-        </div>
-      </section>
-
-      {/* 3. 명예의 전당 */}
+      {/* 2. 명예의 전당 */}
       {top3.length > 0 && (
         <section aria-label="명예의 전당" className="space-y-5">
           <SectionTitle>명예의 전당</SectionTitle>
@@ -314,7 +290,7 @@ export default async function LeaderboardPage({
         </p>
       )}
 
-      {/* 4. 전체 순위 */}
+      {/* 3. 전체 순위 */}
       <section aria-label="전체 제출 및 순위 현황" className="space-y-5">
         <SectionTitle aside={`총 ${total}명`}>전체 제출 및 순위 현황</SectionTitle>
         <div className="overflow-x-auto">
@@ -388,7 +364,7 @@ export default async function LeaderboardPage({
         </div>
       </section>
 
-      {/* 5. 등재 조건 (맨 아래) */}
+      {/* 4. 등재 조건 (맨 아래) */}
       <section aria-label="순위표 등재 3대 조건" className="space-y-5">
         <SectionTitle>순위표 등재 3대 조건</SectionTitle>
         <ol className="grid grid-cols-1 divide-y divide-line border-y border-line md:grid-cols-3 md:divide-x md:divide-y-0">
