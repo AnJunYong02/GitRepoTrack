@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  clampTimelineStart,
   countStatuses,
   getDeadlineMark,
+  timelineInitialStart,
+  timelineRangeLabel,
   extractWeekNo,
   getItemStatus,
   pickCurrentItem,
@@ -115,5 +118,34 @@ describe("getDeadlineMark", () => {
   });
   it("마감이 없으면 none", () => {
     expect(getDeadlineMark({ ...base, deadlineAt: null }, NOW)).toBe("none");
+  });
+});
+
+describe("과제 타임라인 이동", () => {
+  it("처음엔 이번 주 + 다음 1칸이 보이도록 오른쪽에 맞춤", () => {
+    // 13칸 중 이번 주가 11번(0부터), 6칸 표시 → 7~12번 칸 (end=13)
+    expect(timelineInitialStart(13, 11, 6)).toBe(7);
+    // 이번 주가 맨 끝이면 끝까지
+    expect(timelineInitialStart(13, 12, 6)).toBe(7);
+    // 이번 주가 앞쪽이면 0부터
+    expect(timelineInitialStart(13, 1, 6)).toBe(0);
+    // 이번 주가 없으면 맨 끝
+    expect(timelineInitialStart(13, -1, 6)).toBe(7);
+  });
+  it("전체가 보이는 칸 수 이하이면 항상 0", () => {
+    expect(timelineInitialStart(4, 3, 6)).toBe(0);
+    expect(clampTimelineStart(3, 4, 6)).toBe(0);
+  });
+  it("범위 밖 이동은 양 끝으로 보정", () => {
+    expect(clampTimelineStart(-1, 13, 6)).toBe(0);
+    expect(clampTimelineStart(8, 13, 6)).toBe(7);
+    expect(clampTimelineStart(3, 13, 2)).toBe(3);
+  });
+  it("보이는 범위 라벨", () => {
+    expect(timelineRangeLabel({ weekNo: 7, title: "" }, { weekNo: 12, title: "" })).toBe("7–12주차");
+    expect(timelineRangeLabel({ weekNo: 12, title: "" }, { weekNo: 12, title: "" })).toBe("12주차");
+    expect(timelineRangeLabel({ weekNo: 13, title: "" }, { weekNo: null, title: "기말 프로젝트" })).toBe(
+      "13주차 – 기말 프로젝트"
+    );
   });
 });

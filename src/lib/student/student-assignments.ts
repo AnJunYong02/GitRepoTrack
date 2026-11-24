@@ -234,3 +234,30 @@ export function getDeadlineMark(
   if (item.hasPushed) return "onTime";
   return nowMs > ms ? "missing" : "open";
 }
+
+/** 타임라인 시작 칸 범위 제한: 0 ~ (전체 - 보이는 칸 수) */
+export function clampTimelineStart(start: number, total: number, visible: number): number {
+  const max = Math.max(0, total - visible);
+  return Math.min(Math.max(0, start), max);
+}
+
+/**
+ * 타임라인을 처음 열었을 때 보여줄 시작 칸.
+ * 이번 주 과제 + 다음 1칸(공개 전 과제 등)이 보이도록 오른쪽에 맞춘다. 이번 주가 없으면 맨 끝.
+ */
+export function timelineInitialStart(total: number, currentIdx: number, visible: number): number {
+  const end = currentIdx >= 0 ? Math.min(total, currentIdx + 2) : total;
+  return clampTimelineStart(end - visible, total, visible);
+}
+
+/** 보이는 첫/끝 칸 라벨: 둘 다 주차가 있으면 "7–12주차", 아니면 "제목 – 제목" */
+export function timelineRangeLabel(
+  first: { weekNo: number | null; title: string },
+  last: { weekNo: number | null; title: string }
+): string {
+  if (first.weekNo !== null && last.weekNo !== null) {
+    return first.weekNo === last.weekNo ? `${first.weekNo}주차` : `${first.weekNo}–${last.weekNo}주차`;
+  }
+  const name = (e: { weekNo: number | null; title: string }) => (e.weekNo !== null ? `${e.weekNo}주차` : e.title);
+  return first === last ? name(first) : `${name(first)} – ${name(last)}`;
+}
