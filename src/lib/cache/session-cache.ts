@@ -17,6 +17,13 @@ export const ORG_REPOS_SESSION_TTL_MS = 3 * 60 * 1000;
 /** 다른 컴포넌트가 org repo 목록을 바꿨을 때(예: 학생 repo 일괄 생성) 알리는 이벤트 이름 */
 export const ORG_REPOS_INVALIDATED_EVENT = "repotrack:org-repos-invalidated";
 
+/**
+ * org repo 목록을 새로 받아 왔을 때 결과를 함께 알리는 이벤트 이름.
+ * 사이드바 "Repo 새로고침"과 과제 목록이 같은 결과를 공유해 같은 조회를 두 번 하지 않는다.
+ * detail: { orgName: string; data: unknown }
+ */
+export const ORG_REPOS_UPDATED_EVENT = "repotrack:org-repos-updated";
+
 export function orgReposSessionKey(orgName: string): string {
   return `repotrack:org-repos:${orgName.trim().toLowerCase()}`;
 }

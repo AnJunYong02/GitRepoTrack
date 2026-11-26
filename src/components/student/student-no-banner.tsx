@@ -1,29 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { GraduationCap, RefreshCw, CheckCircle2, AlertCircle, Lock, Clock } from "lucide-react";
+import { AlertCircle, CheckCircle2, GraduationCap, RefreshCw } from "lucide-react";
 
 interface StudentNoBannerProps {
-  initialStudentNo: string | null;
-  repoCount: number;
-  activeOrg?: string;
-  /**
-   * card: 본문 카드 (학번 등록 전 입력 폼 포함, 기본값)
-   * inline: 학번 등록 후에만 헤더 가운데에 들어가는 납작한 모양 (등록 전이면 아무것도 그리지 않음)
-   */
-  variant?: "card" | "inline";
+  activeOrg: string;
 }
 
-export function StudentNoBanner({
-  initialStudentNo,
-  repoCount,
-  activeOrg = "2026-2-WebService",
-  variant = "card",
-}: StudentNoBannerProps) {
+/** 학번 미등록 학생용: 최초 1회 학번 등록 + org 과제 저장소 연동 */
+export function StudentNoBanner({ activeOrg }: StudentNoBannerProps) {
   const router = useRouter();
-  const [linkedStudentNo, setLinkedStudentNo] = useState<string | null>(initialStudentNo);
-  const [studentNoInput, setStudentNoInput] = useState(initialStudentNo || "");
+  const [studentNoInput, setStudentNoInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -34,255 +22,100 @@ export function StudentNoBanner({
       return;
     }
     const startedAt = Date.now();
-    setElapsedMs(0);
-    const timer = setInterval(() => {
-      setElapsedMs(Date.now() - startedAt);
-    }, 100);
+    const timer = setInterval(() => setElapsedMs(Date.now() - startedAt), 100);
     return () => clearInterval(timer);
   }, [loading]);
 
-  const handleSync = async (targetNo?: string) => {
-    const noToSubmit = (targetNo ?? studentNoInput).trim();
-    if (!/^[0-9]{6,10}$/.test(noToSubmit)) {
-      setFeedback({
-        type: "error",
-        text: "학번은 6~10자리 숫자로 입력해주세요. (예: 22300743)",
-      });
+  const handleSubmit = async () => {
+    const no = studentNoInput.trim();
+    if (!/^[0-9]{6,10}$/.test(no)) {
+      setFeedback({ type: "error", text: "학번은 6~10자리 숫자로 입력해주세요. (예: 22300743)" });
       return;
     }
-
     setLoading(true);
     setFeedback(null);
-
     try {
       const res = await fetch("/api/student/student-no", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentNo: noToSubmit, orgName: activeOrg }),
+        body: JSON.stringify({ studentNo: no, orgName: activeOrg }),
       });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "학번 연동에 실패했습니다.");
-      }
-
-      setLinkedStudentNo(noToSubmit);
-      setStudentNoInput(noToSubmit);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "학번 연동에 실패했습니다.");
       setFeedback({
         type: "success",
-        text: `${activeOrg} Organization에서 학번(${noToSubmit}) 기준으로 총 ${data.linkedCount}개의 과제 저장소를 동기화했습니다.`,
+        text: `${activeOrg}에서 학번(${no}) 기준으로 ${data.linkedCount ?? 0}개의 과제 저장소를 연결했습니다.`,
       });
       router.refresh();
     } catch (err: any) {
-      setFeedback({
-        type: "error",
-        text: err.message || "오류가 발생했습니다.",
-      });
+      setFeedback({ type: "error", text: err.message || "오류가 발생했습니다." });
     } finally {
       setLoading(false);
     }
   };
 
-  // 동기화 진행 표시용 값 (card·inline 공통)
-  const stepText =
-    elapsedMs < 800
-      ? `1/2단계: ${activeOrg} Organization 연결 확인 중...`
-      : `2/2단계: 학번(${linkedStudentNo || studentNoInput})과 일치하는 최신 과제 저장소 동기화 중...`;
-  const progressPercent = Math.min(94, Math.max(15, Math.round((1 - Math.exp(-elapsedMs / 1200)) * 95)));
-
-  if (variant === "inline") {
-    if (!linkedStudentNo) return null;
-    return (
-      <div className="flex w-fit max-w-full flex-col items-center gap-2">
-        {/* 납작한 알약: 학번 + 최신 Repo 동기화 */}
-        <div className="flex items-center gap-2 rounded-full bg-surface p-1.5 shadow-neu-sm">
-          <span
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-lilac text-lilac-ink"
-            title="내 학번"
-            aria-hidden
-          >
-            <GraduationCap className="h-4 w-4" />
-          </span>
-          <span
-            className="rounded-full px-3 py-1 text-sm font-semibold tracking-wide text-ink shadow-neu-inset"
-            aria-label={`내 학번 ${linkedStudentNo}`}
-          >
-            {linkedStudentNo}
-          </span>
-          <button
-            type="button"
-            onClick={() => handleSync(linkedStudentNo)}
-            disabled={loading}
-            title={`학번 ${linkedStudentNo} 기준으로 ${activeOrg} 저장소를 다시 불러오기`}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-surface px-4 py-2 text-xs font-semibold text-ink shadow-neu-sm transition hover:shadow-neu-inset disabled:opacity-70"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin text-lilac-ink" : ""}`} />
-            <span>{loading ? `새로고침 중... (${(elapsedMs / 1000).toFixed(1)}초)` : "최신 Repo 동기화"}</span>
-          </button>
-        </div>
-
-        {loading && (
-          <div className="w-full space-y-1 px-2" role="status">
-            <p className="text-center text-[11px] text-muted">
-              {stepText} ({(elapsedMs / 1000).toFixed(1)}초)
-            </p>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/15">
-              <div
-                className="h-full rounded-full bg-accent transition-all duration-150 ease-out"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-          </div>
-        )}
-
-        {feedback && (
-          <p
-            role="status"
-            className={`flex items-center gap-1.5 px-2 text-center text-[11px] ${
-              feedback.type === "success"
-                ? "text-emerald-700 dark:text-emerald-300"
-                : "text-red-700 dark:text-red-300"
-            }`}
-          >
-            {feedback.type === "success" ? (
-              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-            ) : (
-              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-            )}
-            <span>{feedback.text}</span>
-          </p>
-        )}
-      </div>
-    );
-  }
+  const progress = Math.min(94, Math.max(15, Math.round((1 - Math.exp(-elapsedMs / 1200)) * 95)));
 
   return (
-    <div className="neu-hover rounded-[28px] bg-surface p-5 sm:p-6 shadow-neu space-y-3">
-      {linkedStudentNo ? (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-lilac text-lilac-ink shrink-0">
-              <GraduationCap className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">내 학번</span>
-                <span className="inline-flex items-center gap-1 rounded-xl px-3 py-1 text-sm font-semibold tracking-wide text-ink shadow-neu-inset">
-                  <span>{linkedStudentNo}</span>
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => handleSync(linkedStudentNo)}
-              disabled={loading}
-              className="inline-flex items-center gap-1.5 rounded-2xl bg-surface px-4 py-2.5 text-xs font-semibold text-ink shadow-neu-sm hover:shadow-neu-inset transition disabled:opacity-70"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-lilac-ink" : ""}`} />
-              <span>
-                {loading
-                  ? `새로고침 중... (${(elapsedMs / 1000).toFixed(1)}초)`
-                  : "최신 Repo 동기화"}
-              </span>
-            </button>
-          </div>
+    <section aria-label="학번 등록" className="space-y-5 border-y border-line py-8">
+      <div className="flex items-start gap-4">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand">
+          <GraduationCap className="h-5 w-5" />
+        </span>
+        <div className="space-y-1.5">
+          <h2 className="text-[20px] font-bold tracking-tight text-fg">학번을 등록하고 과제 저장소를 불러오세요</h2>
+          <p className="text-[14px] text-fg-2">
+            본인 학번(예: <code className="font-mono font-semibold text-fg">22300743</code>)을 입력하면 {activeOrg}에서
+            학번이 들어간 과제 저장소를 자동으로 찾아 연결합니다.
+          </p>
+          <p className="text-[12px] font-medium text-danger">
+            다른 학생의 저장소 보호를 위해 한 번 등록한 학번은 바꿀 수 없어요. 정확히 입력해 주세요.
+          </p>
         </div>
-      ) : (
-        <div className="space-y-3">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-lilac text-lilac-ink shrink-0 mt-0.5">
-              <GraduationCap className="w-5 h-5" />
-            </div>
-            <div className="space-y-1">
-              <h2 className="text-sm font-semibold text-ink">
-                최초 1회 내 학번 등록 및 Organization 과제 Repo 연동
-              </h2>
-              <p className="text-xs text-muted">
-                본인의 학번(예: <code className="font-mono font-semibold text-ink">22300743</code>)을 입력하면 Organization 내 본인 학번의 과제 저장소들을 자동으로 가져옵니다.
-              </p>
-              <p className="text-[11px] font-medium text-amber-700 dark:text-amber-400">
-                🔒 타 학생의 Repo 보호를 위해 한 번 등록된 학번은 이후 변경할 수 없으니 반드시 본인의 학번을 정확히 입력해주세요.
-              </p>
-            </div>
-          </div>
+      </div>
 
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSync();
-            }}
-            className="flex flex-wrap items-center gap-2 sm:pl-13"
-          >
-            <input
-              type="text"
-              value={studentNoInput}
-              onChange={(e) => setStudentNoInput(e.target.value)}
-              placeholder="본인 학번 입력 (예: 22300743)"
-              className="w-full sm:w-64 rounded-2xl border-0 bg-transparent px-4 py-2.5 text-xs font-mono text-ink placeholder:text-muted shadow-neu-inset focus:outline-none focus:ring-2 focus:ring-lilac-ink/30"
-              disabled={loading}
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex items-center gap-1.5 rounded-2xl bg-surface px-4 py-2.5 text-xs font-semibold text-ink shadow-neu-sm hover:shadow-neu-inset transition disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-              <span>
-                {loading
-                  ? `Organization 스캔 중... (${(elapsedMs / 1000).toFixed(1)}초)`
-                  : "내 학번 등록 및 Repo 불러오기"}
-              </span>
-            </button>
-          </form>
-        </div>
-      )}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSubmit();
+        }}
+        className="flex flex-wrap items-center gap-2 sm:pl-[60px]"
+      >
+        <input
+          type="text"
+          inputMode="numeric"
+          value={studentNoInput}
+          onChange={(e) => setStudentNoInput(e.target.value)}
+          placeholder="학번 입력 (예: 22300743)"
+          aria-label="학번"
+          disabled={loading}
+          className="w-full rounded-xl border border-line bg-chip px-4 py-3 font-mono text-[14px] text-fg placeholder:font-sans placeholder:text-fg-3 focus:border-brand focus:outline-none sm:w-72"
+        />
+        <button
+          type="submit"
+          disabled={loading}
+          className="inline-flex items-center gap-1.5 rounded-xl bg-brand px-5 py-3 text-[14px] font-semibold text-white transition hover:brightness-110 disabled:opacity-60"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          {loading ? `불러오는 중... (${(elapsedMs / 1000).toFixed(1)}초)` : "학번 등록 및 Repo 불러오기"}
+        </button>
+      </form>
 
       {loading && (
-        <div className="rounded-2xl p-3 shadow-neu-inset space-y-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-semibold text-ink">
-              {elapsedMs < 800
-                ? `1/2단계: ${activeOrg} Organization 연결 확인 중...`
-                : `2/2단계: 학번(${linkedStudentNo || studentNoInput})과 일치하는 최신 과제 저장소 동기화 중...`}
-            </span>
-            <span className="inline-flex items-center gap-1 font-mono text-[11px] font-bold text-muted">
-              <Clock className="w-3 h-3" />
-              {(elapsedMs / 1000).toFixed(1)}초 경과
-            </span>
-          </div>
-          <div className="w-full h-1.5 rounded-full bg-muted/15 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-accent transition-all duration-150 ease-out"
-              style={{
-                width: `${Math.min(
-                  94,
-                  Math.max(15, Math.round((1 - Math.exp(-elapsedMs / 1200)) * 95))
-                )}%`,
-              }}
-            />
-          </div>
+        <div className="h-1 w-full max-w-md overflow-hidden rounded-full bg-line sm:ml-[60px]" role="status" aria-label="불러오는 중">
+          <div className="h-full rounded-full bg-brand transition-all duration-150" style={{ width: `${progress}%` }} />
         </div>
       )}
 
       {feedback && (
-        <div
-          className={`flex items-center gap-2 rounded-2xl px-3 py-2 text-xs ${
-            feedback.type === "success"
-              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
-              : "bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300"
-          }`}
+        <p
+          role="status"
+          className={`flex items-center gap-1.5 text-[13px] sm:pl-[60px] ${feedback.type === "success" ? "text-brand" : "text-danger"}`}
         >
-          {feedback.type === "success" ? (
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-          ) : (
-            <AlertCircle className="w-4 h-4 shrink-0" />
-          )}
-          <span>{feedback.text}</span>
-        </div>
+          {feedback.type === "success" ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+          {feedback.text}
+        </p>
       )}
-    </div>
+    </section>
   );
 }

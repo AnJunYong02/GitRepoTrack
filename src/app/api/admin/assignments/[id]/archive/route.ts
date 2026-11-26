@@ -1,7 +1,8 @@
 import { guardErrorStatus, requireAssignmentOwner } from "@/lib/auth/guards";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { ANALYSIS_BRANCH } from "@/lib/assignments/branch";
 import { createAssignmentZipStream, StudentRepoArchiveItem } from "@/lib/archive/stream-zip";
-import { loadSecretRoster } from "@/lib/roster/secret-roster";
+import { loadOrgRoster } from "@/lib/roster/org-roster";
 import { parseRepoName } from "@/lib/github/repo-parser";
 import { Readable } from "stream";
 
@@ -36,8 +37,8 @@ export async function GET(
       return new Response("Failed to fetch student repositories", { status: 500 });
     }
 
-    // 3. 시크릿 명단에서 학번 → 성명 매핑 (Owner 확인 후에만 읽는다)
-    const rosterNames = await loadRosterNameMap();
+    // 3. org 학생 명단에서 학번 → 성명 매핑 (Owner 확인 후에만 읽는다)
+    const rosterNames = await loadRosterNameMap(assignment.org_name);
 
     // 4. Build archive items
     const items: StudentRepoArchiveItem[] = studentRepos.map((r: any) => {
@@ -52,7 +53,7 @@ export async function GET(
         studentName,
         githubLogin,
         fullName: r.full_name,
-        branch: assignment.branch || "main",
+        branch: ANALYSIS_BRANCH,
         isSubmitted: Boolean(r.repo_status?.latest_snapshot_id),
         commitSha,
       };
@@ -80,11 +81,11 @@ export async function GET(
 }
 
 /** 명단의 학번 → 성명. 명단이 없거나 읽기에 실패하면 빈 Map (다운로드는 계속 진행) */
-async function loadRosterNameMap(): Promise<Map<string, string>> {
+async function loadRosterNameMap(org: string): Promise<Map<string, string>> {
   const names = new Map<string, string>();
   try {
-    const roster = await loadSecretRoster();
-    for (const s of roster.students) {
+    const students = await loadOrgRoster(org);
+    for (const s of students) {
       if (s.name) names.set(s.studentNo, s.name);
     }
   } catch (err: any) {

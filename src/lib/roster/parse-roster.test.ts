@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  chooseRosterSource,
   normalizeGithubLogin,
   parseRosterCsv,
   splitCsvRows,
@@ -101,14 +100,12 @@ describe("parseRosterCsv", () => {
   });
 });
 
-describe("chooseRosterSource", () => {
-  it("로컬 파일이 있으면 환경변수보다 파일을 먼저 쓴다", () => {
-    expect(chooseRosterSource(true, true)).toBe("file");
-    expect(chooseRosterSource(true, false)).toBe("file");
-  });
-
-  it("파일이 없으면 환경변수, 둘 다 없으면 null", () => {
-    expect(chooseRosterSource(false, true)).toBe("env");
-    expect(chooseRosterSource(false, false)).toBeNull();
+describe("parseRosterCsv - 학생 관리 업로드 형식", () => {
+  it("학번,이름,깃허브아이디 헤더를 인식한다", () => {
+    const result = parseRosterCsv("학번,이름,깃허브아이디\n22100063,홍길동,@octocat\n");
+    expect(result.errors).toEqual([]);
+    expect(result.students).toEqual([
+      { studentNo: "22100063", name: "홍길동", githubLogin: "octocat", emails: [] },
+    ]);
   });
 });

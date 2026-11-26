@@ -9,8 +9,6 @@ import {
   ExternalLink,
   Loader2,
   AlertCircle,
-  FolderGit2,
-  Search,
   RefreshCw,
   PlusCircle,
   CheckCircle2,
@@ -22,55 +20,44 @@ import type { OrganizationOption } from "@/lib/org/active-org";
 
 interface OrgSelectorViewProps {
   organizations: OrganizationOption[];
-  githubLogin?: string;
 }
 
-const ORG_SLUG_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,99}$/;
+const BTN = "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl font-semibold transition disabled:opacity-50";
+const BTN_GRAY = `${BTN} bg-chip px-4 py-3 text-[13px] text-fg-2 hover:text-fg`;
+const BTN_GRAY_SM = `${BTN} bg-chip px-3 py-1.5 text-[12px] text-fg-2 hover:text-fg`;
+const BTN_GREEN = `${BTN} bg-brand px-4 py-3 text-[13px] text-white hover:brightness-110`;
 
 function OrgAvatar({ org, size }: { org: OrganizationOption; size: "sm" | "lg" }) {
-  const box = size === "lg" ? "h-12 w-12 rounded-2xl" : "h-9 w-9 rounded-xl";
+  const box = size === "lg" ? "h-12 w-12 rounded-xl" : "h-9 w-9 rounded-lg";
   if (org.avatarUrl) {
-    return (
-      <img
-        src={org.avatarUrl}
-        alt={org.name}
-        className={`${box} shrink-0 shadow-neu-sm`}
-      />
-    );
+    return <img src={org.avatarUrl} alt="" className={`${box} shrink-0 bg-chip`} />;
   }
   return (
-    <div
-      className={`${box} flex items-center justify-center shrink-0 ${
-        "bg-lilac text-lilac-ink"
-      }`}
-    >
-      <Building2 className={size === "lg" ? "w-6 h-6" : "w-4 h-4"} />
+    <div className={`${box} flex shrink-0 items-center justify-center bg-brand-soft text-brand`}>
+      <Building2 className={size === "lg" ? "h-6 w-6" : "h-4 w-4"} />
     </div>
   );
 }
 
-// Owner인 org에만 배지를 표시하고, 아니면 아무 표시도 하지 않는다
+// Owner인 org에만 작은 표시, 아니면 아무 표시도 하지 않는다
 function RoleBadge({ isOwner }: { isOwner: boolean }) {
   if (!isOwner) return null;
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950/80 px-2.5 py-0.5 text-[11px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-500/20">
-      <Shield className="w-3 h-3" />
-      <span>Owner (관리자)</span>
+    <span className="inline-flex shrink-0 items-center gap-1 text-[12px] font-semibold text-amber-500">
+      <Shield className="h-3 w-3" />
+      Owner
     </span>
   );
 }
 
 export function OrgSelectorView({
   organizations: initialOrganizations,
-  githubLogin,
 }: OrgSelectorViewProps) {
   const router = useRouter();
   const [organizations, setOrganizations] =
     useState<OrganizationOption[]>(initialOrganizations);
   // 현재 처리 중인 org 이름 (입장/등록/삭제 버튼 중복 클릭 방지)
   const [busyOrg, setBusyOrg] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isScanning, setIsScanning] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [infoMsg, setInfoMsg] = useState("");
@@ -140,7 +127,6 @@ export function OrgSelectorView({
       }
       await fetchOrganizations(orgName);
       setInfoMsg(`"${orgName}"을(를) 등록했습니다. 아래 카드에서 대시보드로 입장할 수 있습니다.`);
-      setSearchQuery("");
     } catch (err: any) {
       setErrorMsg(err.message || "Organization 등록 중 오류가 발생했습니다.");
     } finally {
@@ -176,24 +162,6 @@ export function OrgSelectorView({
     }
   };
 
-  const handleSearch = async () => {
-    resetMessages();
-    setIsScanning(true);
-    const q = searchQuery.trim();
-    try {
-      const orgs = await fetchOrganizations(q, true);
-      setInfoMsg(
-        q
-          ? `"${q}" 검색을 포함해 ${orgs.length}개의 Organization을 불러왔습니다.`
-          : `Organization 목록(${orgs.length}개)을 새로 불러왔습니다.`
-      );
-    } catch (err: any) {
-      setErrorMsg(err.message || "Organization 검색 중 오류가 발생했습니다.");
-    } finally {
-      setIsScanning(false);
-    }
-  };
-
   // GitHub OAuth를 다시 거쳐 새 토큰으로 내 org 멤버십 전체를 다시 읽어 온다
   const handleReconnectGitHub = async () => {
     resetMessages();
@@ -214,289 +182,163 @@ export function OrgSelectorView({
     }
   };
 
-  const trimmedQuery = searchQuery.trim();
-  const listedOrganizations = organizations.filter((org) => {
-    if (!trimmedQuery) return true;
-    const q = trimmedQuery.toLowerCase();
-    return (
-      org.name.toLowerCase().includes(q) ||
-      (org.description || "").toLowerCase().includes(q)
-    );
-  });
   const registeredOrganizations = organizations.filter((org) => org.isRegistered);
 
-  const canRegisterNewSlug =
-    trimmedQuery.length >= 2 &&
-    ORG_SLUG_PATTERN.test(trimmedQuery) &&
-    !organizations.some((org) => org.name.toLowerCase() === trimmedQuery.toLowerCase());
-
   return (
-    <div className="space-y-6">
-      {/* 헤더 + 내 GitHub Organization 목록 */}
-      <div className="neu-hover rounded-[28px] bg-surface p-6 sm:p-8 shadow-neu space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-lilac px-3 py-1 text-xs font-semibold text-lilac-ink">
-              <Building2 className="w-3.5 h-3.5" />
-              <span>
-                {githubLogin ? `@${githubLogin} 계정 연동` : "GitHub 계정 연동"} · 수업 Organization 선택
-              </span>
-            </div>
-            <h2 className="pt-1 text-2xl font-normal tracking-tight text-ink">
-              내 GitHub Organization
-            </h2>
-            <p className="text-sm text-muted">
-              사용할 Organization을 <strong>등록</strong>하면 아래에 대시보드 입장 카드가 생깁니다.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleReconnectGitHub}
-            disabled={isBusy}
-            className="inline-flex items-center justify-center gap-1.5 shrink-0 rounded-2xl bg-surface px-4 py-2.5 text-xs font-semibold text-ink shadow-neu-sm transition hover:shadow-neu-inset disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 text-lilac-ink ${isReconnecting ? "animate-spin" : ""}`} />
-            <span>GitHub 다시 연결 (목록 새로고침)</span>
+    <div className="space-y-16">
+      {/* 내 GitHub Organization */}
+      <section aria-label="내 GitHub Organization" className="space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-[20px] font-bold tracking-tight text-fg">내 GitHub Organization</h2>
+          <button type="button" onClick={handleReconnectGitHub} disabled={isBusy} className={BTN_GRAY}>
+            <RefreshCw className={`h-3.5 w-3.5 ${isReconnecting ? "animate-spin" : ""}`} />
+            GitHub 다시 연결
           </button>
-        </div>
-
-        {/* 검색 + 이름으로 직접 등록 */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-            <input
-              type="text"
-              aria-label="GitHub Organization 이름 검색"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.nativeEvent.isComposing) return;
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleSearch();
-                }
-              }}
-              placeholder="Organization 이름 검색 또는 입력 (예: 2026-2-WebService)"
-              className="w-full rounded-2xl border-0 bg-transparent py-3 pl-11 pr-16 text-sm text-ink placeholder:text-muted shadow-neu-inset focus:outline-none focus:ring-2 focus:ring-lilac-ink/30 transition"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-muted hover:text-ink"
-              >
-                지우기
-              </button>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={handleSearch}
-            disabled={isScanning || isBusy}
-            className="inline-flex items-center justify-center gap-1.5 shrink-0 rounded-2xl bg-surface px-4 py-2.5 text-xs font-semibold text-ink shadow-neu-sm transition hover:shadow-neu-inset disabled:opacity-50"
-          >
-            {isScanning ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Search className="w-3.5 h-3.5" />
-            )}
-            <span>GitHub에서 검색</span>
-          </button>
-          {canRegisterNewSlug && (
-            <button
-              type="button"
-              onClick={() => handleRegister(trimmedQuery)}
-              disabled={isBusy}
-              className="inline-flex items-center justify-center gap-1.5 shrink-0 rounded-2xl bg-surface px-4 py-2.5 text-xs font-semibold text-ink shadow-neu-sm transition hover:shadow-neu-inset disabled:opacity-50"
-            >
-              <PlusCircle className="w-3.5 h-3.5 text-lilac-ink" />
-              <span>&ldquo;{trimmedQuery}&rdquo; 등록</span>
-            </button>
-          )}
         </div>
 
         {infoMsg && (
-          <div className="flex items-center gap-2 rounded-2xl p-3 text-xs text-emerald-700 shadow-neu-inset dark:text-emerald-300">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-            <span>{infoMsg}</span>
-          </div>
+          <p role="status" className="flex items-center gap-1.5 text-[13px] text-brand">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            {infoMsg}
+          </p>
         )}
         {errorMsg && (
-          <div className="flex items-center gap-2 rounded-2xl p-3 text-xs text-red-600 shadow-neu-inset dark:text-red-300">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{errorMsg}</span>
-          </div>
+          <p role="alert" className="flex items-center gap-1.5 text-[13px] text-danger">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            {errorMsg}
+          </p>
         )}
 
-        {/* GitHub 설정 화면처럼 행 목록 */}
-        <div className="overflow-hidden rounded-3xl px-2 shadow-neu-inset divide-y divide-muted/15">
-          {listedOrganizations.length === 0 ? (
-            <p className="p-5 text-center text-xs text-muted">
-              {trimmedQuery
-                ? `"${trimmedQuery}"와(과) 일치하는 Organization이 없습니다.`
-                : "불러온 Organization이 없습니다."}
-            </p>
+        {/* Organization 행 목록 */}
+        <ul className="divide-y divide-line border-y border-line">
+          {organizations.length === 0 ? (
+            <li className="py-10 text-center text-[13px] text-fg-3">불러온 Organization이 없습니다.</li>
           ) : (
-            listedOrganizations.map((org) => {
+            organizations.map((org) => {
               const isThisBusy = busyOrg?.toLowerCase() === org.name.toLowerCase();
               return (
-                <div
-                  key={org.name}
-                  className="flex items-center justify-between gap-3 px-3 py-3"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
+                <li key={org.name} className="flex items-center justify-between gap-3 py-3.5">
+                  <div className="flex min-w-0 items-center gap-3">
                     <OrgAvatar org={org} size="sm" />
-                    <div className="min-w-0 flex flex-wrap items-center gap-1.5">
+                    <a
+                      href={org.htmlUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="truncate text-[15px] font-bold text-fg hover:underline"
+                    >
+                      {org.name}
+                    </a>
+                    <RoleBadge isOwner={org.isOwner} />
+                  </div>
+                  {org.isRegistered ? (
+                    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-brand-soft px-2.5 py-1 text-[12px] font-semibold text-brand">
+                      <span className="h-1.5 w-1.5 rounded-full bg-brand" />
+                      등록됨
+                    </span>
+                  ) : (
+                    <button type="button" onClick={() => handleRegister(org.name)} disabled={isBusy} className={BTN_GRAY_SM}>
+                      {isThisBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PlusCircle className="h-3.5 w-3.5" />}
+                      등록
+                    </button>
+                  )}
+                </li>
+              );
+            })
+          )}
+        </ul>
+
+        <p className="flex items-start gap-2 text-[12px] leading-relaxed text-fg-3">
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>
+            속한 Organization이 목록에 없다면, 해당 Organization이 외부 앱 접근을 제한하고 있기 때문입니다.
+            <br />
+            GitHub → Settings → Applications → Authorized OAuth Apps에서 이 서비스를 선택한 뒤{" "}
+            <strong className="font-semibold text-fg-2">Organization access</strong>에서{" "}
+            <strong className="font-semibold text-fg-2">Grant</strong>(Owner) 또는{" "}
+            <strong className="font-semibold text-fg-2">Request</strong>(Member)를 누르고, 위의{" "}
+            <strong className="font-semibold text-fg-2">GitHub 다시 연결</strong>을 눌러주세요.
+          </span>
+        </p>
+      </section>
+
+      {/* 등록된 Organization */}
+      <section aria-label="등록된 Organization" className="space-y-5">
+        <div className="flex items-end justify-between gap-2">
+          <h2 className="text-[20px] font-bold tracking-tight text-fg">등록된 Organization</h2>
+          <span className="text-[12px] text-fg-3">{registeredOrganizations.length}개</span>
+        </div>
+
+        {registeredOrganizations.length === 0 ? (
+          <p className="border-y border-line py-12 text-center text-[14px] text-fg-3">
+            등록된 Organization이 없습니다. 위 목록에서 <strong className="text-fg-2">등록</strong>을 눌러주세요.
+          </p>
+        ) : (
+          <ul className="grid grid-cols-1 gap-x-14 border-b border-line md:grid-cols-2">
+            {registeredOrganizations.map((org) => {
+              const isThisBusy = busyOrg?.toLowerCase() === org.name.toLowerCase();
+              return (
+                <li
+                  key={org.name}
+                  className={`flex min-w-0 flex-col gap-5 border-t border-line py-7 transition-opacity ${
+                    busyOrg && !isThisBusy ? "opacity-50" : ""
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-4">
+                      <OrgAvatar org={org} size="lg" />
+                      <div className="min-w-0 space-y-1">
+                        <h3 className="truncate text-[20px] font-bold text-fg">{org.name}</h3>
+                        <p className="flex flex-wrap items-center gap-2 text-[13px] text-fg-3">
+                          <span>등록된 과제 {org.assignmentCount}개</span>
+                          <RoleBadge isOwner={org.isOwner} />
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-0.5">
                       <a
                         href={org.htmlUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="truncate text-sm font-semibold text-ink hover:text-lilac-ink hover:underline"
+                        className="rounded-lg p-2 text-fg-3 transition hover:bg-chip hover:text-fg"
+                        title="GitHub Organization 페이지 열기"
+                        aria-label={`${org.name} GitHub 페이지 열기`}
                       >
-                        {org.name}
+                        <ExternalLink className="h-4 w-4" />
                       </a>
-                      <RoleBadge isOwner={org.isOwner} />
-                    </div>
-                  </div>
-
-                  {org.isRegistered ? (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-100/70 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>등록됨</span>
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => handleRegister(org.name)}
-                      disabled={isBusy}
-                      className="inline-flex shrink-0 items-center gap-1 rounded-2xl bg-surface px-3.5 py-2 text-xs font-semibold text-ink shadow-neu-sm transition hover:shadow-neu-inset disabled:opacity-50"
-                    >
-                      {isThisBusy ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <PlusCircle className="w-3.5 h-3.5 text-lilac-ink" />
-                      )}
-                      <span>등록</span>
-                    </button>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
-
-        <div className="flex items-start gap-2 rounded-2xl p-4 text-xs leading-relaxed text-muted shadow-neu-inset">
-          <Info className="w-4 h-4 shrink-0 mt-0.5 text-lilac-ink" />
-          <p>
-            속한 Organization이 목록에 없다면, 해당 Organization이 외부 앱 접근을 제한하고 있기 때문입니다. <br/>
-            GitHub → Settings → Applications → Authorized OAuth Apps에서 이 서비스를 선택한 뒤{" "}
-            <strong>Organization access</strong>에서 <strong>Grant</strong>(Owner) 또는{" "}
-            <strong>Request</strong>(Member)를 누르고, 위의 <strong>GitHub 다시 연결</strong>을 눌러주세요.
-          </p>
-        </div>
-      </div>
-
-      {/* 등록된 Organization 카드 */}
-      <div className="space-y-4">
-        <h2 className="inline-flex items-center gap-2 text-base font-semibold tracking-wide text-ink">
-          <span className="h-2 w-2 rounded-full bg-accent" />
-          등록된 Organization
-          <span className="text-sm font-medium tracking-normal text-muted">({registeredOrganizations.length})</span>
-        </h2>
-
-        {registeredOrganizations.length === 0 ? (
-          <div className="rounded-[28px] p-10 text-center text-sm text-muted shadow-neu-inset">
-            등록된 Organization이 없습니다. 위 목록에서 <strong>등록</strong>을 눌러주세요.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            {registeredOrganizations.map((org) => {
-              const isThisBusy = busyOrg?.toLowerCase() === org.name.toLowerCase();
-              return (
-                <div
-                  key={org.name}
-                  className={`neu-hover group relative rounded-[28px] bg-surface p-6 shadow-neu ${
-                    busyOrg && !isThisBusy ? "opacity-50" : ""
-                  }`}
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <OrgAvatar org={org} size="lg" />
-                        <div className="min-w-0">
-                          <h3 className="truncate text-lg font-semibold text-ink">
-                            {org.name}
-                          </h3>
-                          <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                            <RoleBadge isOwner={org.isOwner} />
-                            {org.assignmentCount > 0 && (
-                              <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium text-ink/80 shadow-neu-inset">
-                                <FolderGit2 className="w-3 h-3" />
-                                <span>등록된 과제 {org.assignmentCount}개</span>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* 오른쪽: 위 GitHub 열기·삭제, 바로 아래 입장 버튼 */}
-                      <div className="flex shrink-0 flex-col items-end gap-2">
-                      <div className="flex items-center gap-0.5">
-                        <a
-                          href={org.htmlUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="rounded-xl p-2 text-muted transition hover:text-ink hover:shadow-neu-sm"
-                          title="GitHub Organization 페이지 열기"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => handleUnregister(org.name)}
-                          disabled={isBusy}
-                          aria-label={`${org.name} 대시보드 목록에서 삭제`}
-                          title="대시보드 목록에서 삭제"
-                          className="rounded-xl p-2 text-muted transition hover:text-red-600 hover:shadow-neu-sm disabled:opacity-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
                       <button
-                      type="button"
-                      disabled={isBusy}
-                      onClick={() => handleEnter(org)}
-                      className="inline-flex shrink-0 items-center gap-1.5 rounded-2xl bg-surface px-4 py-2.5 text-xs font-semibold text-ink shadow-neu-sm transition hover:shadow-neu-inset disabled:opacity-60"
-                    >
-                      {isThisBusy ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin text-lilac-ink" />
-                          <span>처리 중...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>{org.isOwner ? "관리자 대시보드 입장" : "과제 목록 입장"}</span>
-                          <ArrowRight className="w-3.5 h-3.5 text-lilac-ink" />
-                        </>
-                      )}
-                    </button>
-                      </div>
+                        type="button"
+                        onClick={() => handleUnregister(org.name)}
+                        disabled={isBusy}
+                        aria-label={`${org.name} 대시보드 목록에서 삭제`}
+                        title="대시보드 목록에서 삭제"
+                        className="rounded-lg p-2 text-fg-3 transition hover:bg-danger-soft hover:text-danger disabled:opacity-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
-
-                    {org.description && (
-                      <p className="line-clamp-2 text-xs text-muted">
-                        {org.description}
-                      </p>
-                    )}
                   </div>
 
-                </div>
+                  {org.description && <p className="line-clamp-2 text-[13px] text-fg-2">{org.description}</p>}
+
+                  <button type="button" disabled={isBusy} onClick={() => handleEnter(org)} className={`${BTN_GREEN} w-fit`}>
+                    {isThisBusy ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        처리 중...
+                      </>
+                    ) : (
+                      <>
+                        {org.isOwner ? "관리자 대시보드 입장" : "과제 목록 입장"}
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </>
+                    )}
+                  </button>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
-      </div>
+      </section>
     </div>
   );
 }

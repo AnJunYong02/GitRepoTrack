@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { fetchRepoSnapshot } from "@/lib/github/fetch-snapshot";
 import { evaluateSnapshot, CriteriaRules } from "./evaluate";
+import { ANALYSIS_BRANCH } from "@/lib/assignments/branch";
 
 export interface AnalysisOptions {
   forceRefresh?: boolean;
@@ -84,11 +85,12 @@ export async function runRepoAnalysis(
     .single();
 
   const rules: CriteriaRules = (criteria?.rules as CriteriaRules) || {
-    branch: assignment.branch || "main",
+    branch: ANALYSIS_BRANCH,
     readme: { required: true },
   };
 
-  const branch = rules.branch || assignment.branch || "main";
+  // 분석 브랜치는 main 고정 (과거 기준 버전의 branch 값은 무시)
+  const branch = ANALYSIS_BRANCH;
   const [owner, repo] = studentRepo.full_name.split("/");
 
   // 4. Fetch live data from GitHub
