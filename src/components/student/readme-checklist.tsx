@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Check, ClipboardCopy } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import { Check, ChevronDown, ClipboardCopy, Info } from "lucide-react";
 import { buildMarkdownHeadings } from "@/lib/student/time-utils";
 
 interface ReadmeChecklistProps {
@@ -34,11 +34,8 @@ async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-const MATCH_RULE =
-  "README 어디에든 키워드 문구가 있으면 통과로 판정합니다 (대소문자·띄어쓰기 무시). 철자나 특수문자가 다르면 감지되지 않을 수 있어요.";
-
 /** README 필수 키워드 검사: 통과 | 미감지 두 열 (미감지 키워드는 클릭하면 "## 키워드" 복사) */
-export function ReadmeChecklist({ details }: ReadmeChecklistProps) {
+export function ReadmeChecklist({ details, missingKeywords }: ReadmeChecklistProps) {
   // "all" = 일괄 복사 완료, 그 외 문자열 = 해당 키워드 복사 완료, "error" = 실패
   const [copied, setCopied] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -64,7 +61,7 @@ export function ReadmeChecklist({ details }: ReadmeChecklistProps) {
   return (
     <section aria-label="README 필수 키워드 검사" className="min-w-0 space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-2">
-        <h2 className="text-[20px] font-bold tracking-tight text-fg" title={MATCH_RULE}>
+        <h2 className="text-[20px] font-bold tracking-tight text-fg">
           README 필수 키워드 검사
         </h2>
         {total > 0 && (
@@ -111,7 +108,8 @@ export function ReadmeChecklist({ details }: ReadmeChecklistProps) {
               <p className="py-8 text-center text-[13px] font-medium text-brand">모든 필수 키워드를 통과했어요.</p>
             ) : (
               <>
-                <ul>
+                {/* 미감지가 많아도 왼쪽 열이 길어지지 않게 약 6개 높이에서 스크롤 */}
+                <ul tabIndex={0} aria-label="미감지 키워드 목록" className="max-h-[390px] overflow-y-auto pr-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/30">
                   {failedItems.map((item, idx) => {
                     const key = `kw:${item.keyword}-${idx}`;
                     const isCopied = copied === key;
@@ -143,7 +141,6 @@ export function ReadmeChecklist({ details }: ReadmeChecklistProps) {
                 <button
                   type="button"
                   onClick={() => handleCopy("all", failedItems.map((i) => i.keyword))}
-                  title={MATCH_RULE}
                   className="mt-10 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-danger-soft px-4 py-3 text-[13px] font-semibold text-danger transition hover:brightness-95"
                 >
                   {copied === "all" ? (
@@ -165,7 +162,59 @@ export function ReadmeChecklist({ details }: ReadmeChecklistProps) {
           </div>
         </div>
       )}
+
+      {/* 분석 기준 안내 (토글) */}
+      <CriteriaToggle exampleKeyword={failedItems[0]?.keyword ?? missingKeywords?.[0] ?? null} />
     </section>
+  );
+}
+
+/** "README 키워드 분석 기준" 토글: 누르면 인식 팁과 판정 기준이 펼쳐짐 */
+function CriteriaToggle({ exampleKeyword }: { exampleKeyword: string | null }) {
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+
+  return (
+    <div className="border-t border-line pt-5">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-controls={panelId}
+        className="flex w-full items-center gap-2 text-left text-[14px] font-semibold text-fg transition hover:text-fg-2"
+      >
+        <Info className="h-4 w-4 shrink-0 text-chart" />
+        <span className="flex-1">README 키워드 분석 기준</span>
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-fg-3 transition-transform duration-200 motion-reduce:transition-none ${
+            open ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {/* 높이를 몰라도 부드럽게 펼치기: grid-rows 0fr → 1fr */}
+      <div
+        id={panelId}
+        role="region"
+        aria-label="README 키워드 분석 기준 설명"
+        className={`grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none ${
+          open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+        }`}
+      >
+        <div className="overflow-hidden" inert={!open || undefined}>
+          <div className="ml-2 mt-4 space-y-3 border-l-2 border-line pl-4 text-[13px] leading-relaxed text-fg-2">
+            {exampleKeyword && (
+              <p>
+                💡 인식이 안 된 키워드가 있을시, README파일에 해당 문구 포함해 작성 → 다시 push하고 → <strong className="font-semibold text-fg">[GitHub 새로고침]</strong> 클릭
+              </p>
+            )}
+            <p>
+                💡 README 어디에든 키워드 문구가 포함되어 있으면 충족으로 판정.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

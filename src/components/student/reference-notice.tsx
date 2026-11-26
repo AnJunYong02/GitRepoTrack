@@ -22,7 +22,7 @@ export function ReferenceNotice({ subject, target = "분석 결과", variant = "
           !
         </span>
         <span>
-          <strong className="font-semibold text-danger">참고용</strong> · 여기 표시되는 {target}는 실제 과제 채점 점수와 다를 수 있어요.
+          <strong className="font-semibold text-danger">[참고용]</strong> 여기 표시되는 {target}는 실제 과제 점수와 다를 수 있음.
         </span>
       </p>
     );

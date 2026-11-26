@@ -60,7 +60,6 @@ export function ClientDashboardView({ studentRepoId, isOrgOwner = false, initial
   };
 
   const evalData = data.evaluation;
-  const isSubmitted = evalData?.submitted ?? false;
   const readmeResults = evalData?.readme_results || { satisfied: false, missingKeywords: [], details: [] };
   const repoOrg = data.assignment?.org_name || (data.repo?.full_name ? data.repo.full_name.split("/")[0] : "");
   const branch = data.assignment?.branch || "main";
@@ -168,7 +167,16 @@ export function ClientDashboardView({ studentRepoId, isOrgOwner = false, initial
           </div>
         </div>
 
-        <ReferenceNotice subject="이 분석 결과" variant="inline" />
+        {/* 참고용 안내(왼쪽) + push 감지 · 마지막 갱신(오른쪽)을 한 줄에 */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+          <ReferenceNotice subject="이 분석 결과" variant="inline" />
+          {(data.status?.stale || data.status?.fetched_at) && (
+            <p className="shrink-0 text-[12px] text-fg-3 sm:pt-px">
+              {data.status?.stale && <span className="text-fg-2">최근 push 감지됨 · GitHub 새로고침으로 최신 반영 · </span>}
+              {data.status?.fetched_at && <>마지막 갱신 {formatKstDateTime(data.status.fetched_at, true)}</>}
+            </p>
+          )}
+        </div>
 
         {message && (
           <p role="alert" className="flex items-center gap-2 text-[13px] text-danger">
@@ -178,37 +186,10 @@ export function ClientDashboardView({ studentRepoId, isOrgOwner = false, initial
         )}
       </header>
 
-      {/* 판정 + 마지막 갱신 */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          {hasEvaluation ? (
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-semibold ${
-                isSubmitted ? "bg-brand-soft text-brand" : "bg-danger-soft text-danger"
-              }`}
-            >
-              <span className={`h-1.5 w-1.5 rounded-full ${isSubmitted ? "bg-brand" : "bg-danger"}`} />
-              {isSubmitted ? "충족" : "미충족"}
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-chip px-3 py-1.5 text-[13px] font-semibold text-fg-3">
-              <span className="h-1.5 w-1.5 rounded-full bg-fg-3" />
-              분석 전
-            </span>
-          )}
-          {data.status?.stale && (
-            <span className="text-[12px] text-fg-2">최근 push 감지됨 · GitHub 새로고침으로 최신 반영</span>
-          )}
-        </div>
-        {data.status?.fetched_at && (
-          <span className="text-[12px] text-fg-3">마지막 갱신 {formatKstDateTime(data.status.fetched_at, true)}</span>
-        )}
-      </div>
-
       {/* 제출 요약 3열 */}
       <section
         aria-label="제출 요약"
-        className="-mt-4 grid grid-cols-1 divide-y divide-line border-y border-line md:grid-cols-3 md:divide-x md:divide-y-0"
+        className="grid grid-cols-1 divide-y divide-line border-y border-line md:grid-cols-3 md:divide-x md:divide-y-0"
       >
         <SummaryColumn label="커밋" view={commitView} />
         <SummaryColumn label="README 키워드" view={keywordView} />
@@ -216,19 +197,21 @@ export function ClientDashboardView({ studentRepoId, isOrgOwner = false, initial
           <DeadlineCountdown
             deadlineAt={data.assignment?.deadline_at ?? null}
             commitDates={(data.commits || []).map((c: any) => c.committed_at)}
-            isSubmitted={isSubmitted}
           />
         </div>
       </section>
 
       {/* README 키워드 검사 | 커밋 추이 · 이력 */}
       <div className="grid grid-cols-1 gap-14 pt-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:gap-16">
-        <ReadmeChecklist
-          satisfied={readmeResults.satisfied}
-          missingKeywords={readmeResults.missingKeywords}
-          details={readmeResults.details}
-        />
-        <div className="min-w-0 space-y-14">
+        {/* 두 열은 그리드 기본 stretch로 높이가 같음 → 각 열 아래 구분선이 같은 높이에 그려짐 */}
+        <div className="min-w-0 border-b border-line pb-10">
+          <ReadmeChecklist
+            satisfied={readmeResults.satisfied}
+            missingKeywords={readmeResults.missingKeywords}
+            details={readmeResults.details}
+          />
+        </div>
+        <div className="min-w-0 space-y-14 border-b border-line pb-10">
           <CommitChart commits={data.commits} />
           <CommitTimeline commits={data.commits} />
         </div>
