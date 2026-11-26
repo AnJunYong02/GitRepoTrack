@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -12,6 +12,8 @@ import {
   ListChecks,
   LogOut,
   Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
   RefreshCw,
   Repeat2,
   Shield,
@@ -24,6 +26,7 @@ import { useThemeToggle } from "@/components/theme-toggle";
 import { CreateStudentReposPanel } from "@/components/admin/create-student-repos-panel";
 import { RepoRefreshButton } from "@/components/admin/repo-refresh-button";
 import type { StudentStatusCounts } from "@/lib/student/student-assignments";
+import { SIDEBAR_COOKIE } from "@/components/student/sidebar-cookie";
 
 export type StudentNavKey = "dashboard" | "assignments" | "leaderboard" | "admin" | "none";
 
@@ -41,12 +44,14 @@ export interface StudentSidebarProps {
   active?: StudentNavKey;
   /** 순위표 주소 (학생: 이번 주 과제, 관리자: 가장 최근 과제 / 없으면 메뉴 숨김) */
   leaderboardHref?: string | null;
+  /** 처음 열림 여부 (StudentShell이 쿠키에서 읽어 넘김, 기본 닫힘) */
+  defaultOpen?: boolean;
 }
 
 /** 데스크톱에서 사이드바가 접혀 있으면 투명하게 숨기는 글자 (스크린리더는 계속 읽음) */
 const HIDE_WHEN_CLOSED = "transition-opacity duration-150 lg:group-data-[open=false]/sb:opacity-0";
-/** 마우스가 떠난 뒤 닫힐 때까지 기다리는 시간 */
-const CLOSE_DELAY_MS = 180;
+/** 접혀 있으면 완전히 숨겨 Tab 포커스도 받지 않게 함 (드롭다운 버튼 등 아이콘 없는 조작 요소) */
+const INVISIBLE_WHEN_CLOSED = `${HIDE_WHEN_CLOSED} lg:group-data-[open=false]/sb:invisible`;
 
 const NAV_BASE = "flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] transition-colors";
 const NAV_IDLE = `${NAV_BASE} text-fg-2 hover:bg-chip hover:text-fg`;
@@ -66,7 +71,7 @@ function NavItem({
   active: boolean;
 }) {
   return (
-    <Link href={href} aria-current={active ? "page" : undefined} className={active ? NAV_ACTIVE : NAV_IDLE}>
+    <Link href={href} title={label} aria-current={active ? "page" : undefined} className={active ? NAV_ACTIVE : NAV_IDLE}>
       <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center">{icon}</span>
       <span className={`whitespace-nowrap ${HIDE_WHEN_CLOSED}`}>{label}</span>
     </Link>
@@ -75,8 +80,8 @@ function NavItem({
 
 /**
  * 학생 화면 왼쪽 사이드바
- * - 데스크톱: 평소 64px 아이콘 줄, 마우스를 가까이 대거나(오른쪽 16px 감지 영역) Tab으로 들어오면 232px로 본문 위에 겹쳐 펼침
- * - 모바일: 상단 블록 (항상 펼친 모양)
+ * - 데스크톱: 오른쪽 모서리 버튼으로 64px 아이콘 줄 ↔ 232px 펼침을 고정 전환 (상태는 쿠키에 저장, 본문은 옆으로 밀림)
+ * - 모바일: 상단 블록 (항상 펼친 모양, 버튼 없음)
  */
 export function StudentSidebar({
   mode = "student",
@@ -88,6 +93,7 @@ export function StudentSidebar({
   status,
   active = "none",
   leaderboardHref,
+  defaultOpen = false,
 }: StudentSidebarProps) {
   const org = activeOrg ?? "";
   const hasOrg = Boolean(org);
@@ -95,55 +101,21 @@ export function StudentSidebar({
   const isAdmin = mode === "admin";
   const homeHref = !hasOrg ? "/dashboard" : isAdmin ? `/admin${q}` : `/dashboard${q}`;
 
-  const [open, setOpen] = useState(false);
-  const hoveringRef = useRef(false);
-  const menuOpenRef = useRef(false); // Org 드롭다운이 열려 있으면 닫지 않음
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [open, setOpen] = useState(defaultOpen);
 
-  const cancelClose = () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    closeTimer.current = null;
+  // 버튼으로만 열고 닫음: 상태를 1년짜리 쿠키에 남겨 새로고침·페이지 이동 후에도 유지
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    document.cookie = `${SIDEBAR_COOKIE}=${next ? "open" : "closed"}; path=/; max-age=31536000; samesite=lax`;
   };
-  const scheduleClose = useCallback(() => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    closeTimer.current = setTimeout(() => {
-      if (!hoveringRef.current && !menuOpenRef.current) setOpen(false);
-    }, CLOSE_DELAY_MS);
-  }, []);
-
-  useEffect(() => () => cancelClose(), []);
-
-  const handleMenuOpenChange = useCallback(
-    (menuOpen: boolean) => {
-      menuOpenRef.current = menuOpen;
-      // 드롭다운을 바깥 클릭으로 닫았고 마우스도 밖에 있으면 사이드바도 닫음
-      if (!menuOpen && !hoveringRef.current) scheduleClose();
-    },
-    [scheduleClose]
-  );
 
   return (
     <div
       data-open={open}
-      onMouseEnter={() => {
-        hoveringRef.current = true;
-        cancelClose();
-        setOpen(true);
-      }}
-      onMouseLeave={() => {
-        hoveringRef.current = false;
-        scheduleClose();
-      }}
-      onFocus={() => {
-        cancelClose();
-        setOpen(true);
-      }}
-      onBlur={(e) => {
-        // 포커스가 사이드바 밖으로 나갔을 때만
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null) && !hoveringRef.current) scheduleClose();
-      }}
-      className={`group/sb relative lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:transition-[width,box-shadow] lg:duration-200 lg:ease-out ${
-        open ? "lg:w-[232px] lg:shadow-[12px_0_32px_-16px_rgba(0,0,0,0.25)]" : "lg:w-16"
+      data-sidebar-open={open}
+      className={`group/sb relative lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:transition-[width] lg:duration-200 lg:ease-out ${
+        open ? "lg:w-[232px]" : "lg:w-16"
       }`}
     >
       <div className="h-full border-b border-line bg-canvas lg:overflow-hidden lg:border-b-0 lg:border-r">
@@ -162,8 +134,8 @@ export function StudentSidebar({
       </Link>
 
       {/* Organization */}
-      <div className={HIDE_WHEN_CLOSED}>
-        <OrgMenu org={org} onOpenChange={handleMenuOpenChange} />
+      <div className={INVISIBLE_WHEN_CLOSED}>
+        <OrgMenu org={org} />
         {isAdmin && hasOrg && (
           <a
             href={`https://github.com/${encodeURIComponent(org)}`}
@@ -273,8 +245,17 @@ export function StudentSidebar({
       </div>
         </aside>
       </div>
-      {/* 마우스 근접 감지 영역: 아이콘 줄 오른쪽 16px (보이지 않음) */}
-      <div aria-hidden className="absolute inset-y-0 -right-4 hidden w-4 lg:block" />
+      {/* 열기/닫기 버튼 (데스크톱만): 오른쪽 경계선에 걸친 동그란 버튼, overflow-hidden 바깥이라 잘리지 않음 */}
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        aria-label={open ? "사이드바 접기" : "사이드바 펼치기"}
+        title={open ? "사이드바 접기" : "사이드바 펼치기"}
+        className="absolute -right-3.5 top-8 z-10 hidden h-7 w-7 items-center justify-center rounded-full border border-line bg-canvas text-fg-3 shadow-[0_2px_8px_rgba(0,0,0,0.06)] transition hover:bg-chip hover:text-fg lg:flex"
+      >
+        {open ? <PanelLeftClose className="h-3.5 w-3.5" /> : <PanelLeftOpen className="h-3.5 w-3.5" />}
+      </button>
     </div>
   );
 }
@@ -294,14 +275,9 @@ function StatusRow({ dot, label, value }: { dot: string; label: string; value: n
 }
 
 /** "Organization / 2026-2-WebService ▾" + 펼침 메뉴 */
-function OrgMenu({ org, onOpenChange }: { org: string; onOpenChange?: (open: boolean) => void }) {
+function OrgMenu({ org }: { org: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-
-  // 사이드바가 드롭다운 열린 동안 접히지 않도록 알림
-  useEffect(() => {
-    onOpenChange?.(open);
-  }, [open, onOpenChange]);
 
   useEffect(() => {
     if (!open) return;
