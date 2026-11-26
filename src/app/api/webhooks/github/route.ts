@@ -3,6 +3,7 @@ import { after } from "next/server";
 import { verifyWebhookSignature } from "@/lib/github/webhook";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { runRepoAnalysis } from "@/lib/analysis/run-analysis";
+import { ANALYSIS_BRANCH } from "@/lib/assignments/branch";
 
 export const runtime = "nodejs";
 
@@ -43,11 +44,11 @@ export async function POST(req: Request) {
   // 2. Check if this repository is mapped to any student_repo
   const { data: studentRepo } = await supabaseAdmin
     .from("student_repos")
-    .select("id, assignment_id, assignments(branch)")
+    .select("id, assignment_id")
     .eq("repo_id", repoId)
     .maybeSingle();
 
-  const targetBranch = (studentRepo as any)?.assignments?.branch || "main";
+  const targetBranch = ANALYSIS_BRANCH;
   const isTargetBranch = ref === `refs/heads/${targetBranch}`;
 
   // 3. Record push event for idempotency and queue tracking

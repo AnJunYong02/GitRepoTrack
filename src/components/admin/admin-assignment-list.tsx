@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ANALYSIS_BRANCH } from "@/lib/assignments/branch";
 import {
   getSessionStorage,
   isFresh,
@@ -531,7 +532,7 @@ function AssignmentEntry({
           )}
         </p>
         <p className="text-[14px] text-fg-3">
-          {formatKstMonthDay(a.deadlineAt)} 마감 · {a.branch} 브랜치
+          {formatKstMonthDay(a.deadlineAt)} 마감 · {ANALYSIS_BRANCH} 브랜치
         </p>
       </div>
 

@@ -1,5 +1,6 @@
 import { guardErrorStatus, requireAssignmentOwner } from "@/lib/auth/guards";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { ANALYSIS_BRANCH } from "@/lib/assignments/branch";
 import { createAssignmentZipStream, StudentRepoArchiveItem } from "@/lib/archive/stream-zip";
 import { loadSecretRoster } from "@/lib/roster/secret-roster";
 import { parseRepoName } from "@/lib/github/repo-parser";
@@ -52,7 +53,7 @@ export async function GET(
         studentName,
         githubLogin,
         fullName: r.full_name,
-        branch: assignment.branch || "main",
+        branch: ANALYSIS_BRANCH,
         isSubmitted: Boolean(r.repo_status?.latest_snapshot_id),
         commitSha,
       };

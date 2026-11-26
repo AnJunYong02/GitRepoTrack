@@ -7,6 +7,7 @@ import { checkIsUserOwnerOfOrg } from "@/lib/org/active-org";
 import { summarizeStatusRows, toStudentStatusRow } from "@/lib/admin/student-status-rows";
 import { formatAssignmentTitle } from "@/lib/admin/assignment-title";
 import { formatKstDateTime } from "@/lib/student/time-utils";
+import { ANALYSIS_BRANCH } from "@/lib/assignments/branch";
 import { CriteriaForm } from "@/components/admin/criteria-form";
 import { AddRepoForm } from "@/components/admin/add-repo-form";
 import { BatchAnalyzeButton } from "@/components/admin/batch-analyze-button";
@@ -153,7 +154,7 @@ export default async function AdminAssignmentDetailPage({
                 )}
               </h1>
               <p className="text-[15px] text-fg-3">
-                {formatKstDateTime(assignment.deadline_at)} 마감 · {assignment.branch} 브랜치
+                {formatKstDateTime(assignment.deadline_at)} 마감 · {ANALYSIS_BRANCH} 브랜치
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2.5 xl:pt-3">
@@ -210,7 +211,11 @@ export default async function AdminAssignmentDetailPage({
 
         {/* 왼쪽: 기준 설정 / 오른쪽: 학생별 현황 */}
         <div className="grid grid-cols-1 gap-14 xl:grid-cols-[440px_minmax(0,1fr)] xl:gap-16">
-          <CriteriaForm assignmentId={assignment.id} initialRules={activeVersion?.rules} />
+          <CriteriaForm
+            assignmentId={assignment.id}
+            initialDeadlineAt={assignment.deadline_at}
+            initialRules={activeVersion?.rules}
+          />
           <StudentStatusTable rows={rows} />
         </div>
       </div>

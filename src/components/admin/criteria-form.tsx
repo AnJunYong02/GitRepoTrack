@@ -1,10 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, X, CheckCircle } from "lucide-react";
+import { isoToKstLocalInput, kstLocalInputToIso } from "@/lib/admin/deadline-input";
 
 interface CriteriaFormProps {
   assignmentId: string;
+  /** 현재 마감 일시 (assignments.deadline_at, ISO) */
+  initialDeadlineAt: string;
   initialRules?: {
     branch?: string;
     minCommits?: number;
@@ -17,13 +21,15 @@ interface CriteriaFormProps {
   onSaved?: () => void;
 }
 
-export function CriteriaForm({ assignmentId, initialRules, onSaved }: CriteriaFormProps) {
-  const [branch, setBranch] = useState(initialRules?.branch || "main");
+export function CriteriaForm({ assignmentId, initialDeadlineAt, initialRules, onSaved }: CriteriaFormProps) {
+  const router = useRouter();
   const [minCommits, setMinCommits] = useState<number>(initialRules?.minCommits || 0);
   const [readmeRequired, setReadmeRequired] = useState(initialRules?.readme?.required ?? true);
   const [keywords, setKeywords] = useState<string[]>(
     initialRules?.readme?.headerKeywords || []
   );
+  // datetime-local 값 (한국 시간 기준 "YYYY-MM-DDTHH:mm")
+  const [deadline, setDeadline] = useState(() => isoToKstLocalInput(initialDeadlineAt));
   const [newKeywordInput, setNewKeywordInput] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -65,14 +71,20 @@ export function CriteriaForm({ assignmentId, initialRules, onSaved }: CriteriaFo
   };
 
   const handleSave = async () => {
-    setIsSaving(true);
     setErrorMsg("");
     setSaveSuccess(false);
 
+    const deadlineAt = kstLocalInputToIso(deadline);
+    if (!deadlineAt) {
+      setErrorMsg("제출 마감 기한을 올바르게 입력해주세요.");
+      return;
+    }
+
+    setIsSaving(true);
     try {
       const payload = {
+        deadlineAt,
         rules: {
-          branch,
           minCommits: Number(minCommits) || 0,
           requiredFiles: [],
           readme: {
@@ -96,6 +108,8 @@ export function CriteriaForm({ assignmentId, initialRules, onSaved }: CriteriaFo
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
+      // 헤더의 마감 일시 등 서버 컴포넌트 값 갱신
+      router.refresh();
       if (onSaved) onSaved();
     } catch (err: any) {
       setErrorMsg(err.message);
@@ -117,23 +131,8 @@ export function CriteriaForm({ assignmentId, initialRules, onSaved }: CriteriaFo
         </p>
       )}
 
-      {/* 분석 기준 브랜치 */}
-      <div className="space-y-3">
-        <label htmlFor="criteria-branch" className="block text-[15px] font-bold text-fg">
-          분석 기준 브랜치
-        </label>
-        <input
-          id="criteria-branch"
-          type="text"
-          value={branch}
-          onChange={(e) => setBranch(e.target.value)}
-          className={INPUT}
-          placeholder="main"
-        />
-      </div>
-
       {/* README 필수 키워드 */}
-      <div className="space-y-3 border-t border-line pt-7">
+      <div className="space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
             <p className="text-[15px] font-bold text-fg">
@@ -228,6 +227,26 @@ export function CriteriaForm({ assignmentId, initialRules, onSaved }: CriteriaFo
           />
           <span className="text-[14px] text-fg-2">개 이상</span>
         </div>
+      </div>
+
+      {/* 제출 마감 기한 */}
+      <div className="space-y-3 border-t border-line pt-7">
+        <div className="space-y-1">
+          <label htmlFor="criteria-deadline" className="block text-[15px] font-bold text-fg">
+            제출 마감 기한
+          </label>
+          <p className="text-[12px] leading-relaxed text-fg-3">
+            이 시각 이후의 push는 지각 제출로 표시돼요. (한국 시간 기준)
+          </p>
+        </div>
+        <input
+          id="criteria-deadline"
+          type="datetime-local"
+          value={deadline}
+          onChange={(e) => setDeadline(e.target.value)}
+          required
+          className={INPUT}
+        />
       </div>
 
       {/* 저장 */}
