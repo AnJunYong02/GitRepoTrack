@@ -13,6 +13,7 @@ import { CriteriaForm } from "@/components/admin/criteria-form";
 import { AddRepoForm } from "@/components/admin/add-repo-form";
 import { BatchAnalyzeButton } from "@/components/admin/batch-analyze-button";
 import { StudentStatusTable } from "@/components/admin/student-status-table";
+import { ResizableSplitLayout } from "@/components/admin/resizable-split-layout";
 import { BackLink } from "@/components/navigation/back-link";
 import { StudentShell } from "@/components/student/student-shell";
 
@@ -216,15 +217,17 @@ export default async function AdminAssignmentDetailPage({
           </p>
         )}
 
-        {/* 왼쪽: 기준 설정 / 오른쪽: 학생별 현황 */}
-        <div className="grid grid-cols-1 gap-14 xl:grid-cols-[440px_minmax(0,1fr)] xl:gap-16">
-          <CriteriaForm
-            assignmentId={assignment.id}
-            initialDeadlineAt={assignment.deadline_at}
-            initialRules={activeVersion?.rules}
-          />
-          <StudentStatusTable rows={rows} />
-        </div>
+        {/* 왼쪽: 기준 설정 / 오른쪽: 학생별 현황 (가운데 막대로 폭 조절, 기본 4:6) */}
+        <ResizableSplitLayout
+          left={
+            <CriteriaForm
+              assignmentId={assignment.id}
+              initialDeadlineAt={assignment.deadline_at}
+              initialRules={activeVersion?.rules}
+            />
+          }
+          right={<StudentStatusTable rows={rows} />}
+        />
       </div>
     </StudentShell>
   );
