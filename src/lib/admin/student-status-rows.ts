@@ -7,6 +7,10 @@ export type SubmitState = "submitted" | "unsubmitted" | "pending";
 export interface StudentStatusRow {
   id: string;
   studentNo: string | null;
+  /** 이름: 학생 관리 명단 → student_repos.student_name → null */
+  studentName: string | null;
+  /** GitHub ID: 학생 관리 명단 → 로그인한 학생 프로필 → null */
+  githubLogin: string | null;
   fullName: string;
   repoName: string;
   submitState: SubmitState;
@@ -23,11 +27,23 @@ export interface StudentStatusRow {
   lastPushAt: string | null;
 }
 
+/** 학생 관리 명단의 한 명 (학번으로 찾은 값) */
+export interface RosterEntry {
+  name: string;
+  githubLogin: string | null;
+}
+
 /**
  * student_repos 조회 행 1개 → 표의 한 줄
  * @param activeKeywords 현재 기준의 README 키워드 (평가 결과 details가 없을 때 개수 기준)
+ * @param rosterEntry 학생 관리 명단에서 이 학번으로 찾은 값 (없으면 DB 값으로 대체)
  */
-export function toStudentStatusRow(sr: any, minCommits: number, activeKeywords: string[]): StudentStatusRow {
+export function toStudentStatusRow(
+  sr: any,
+  minCommits: number,
+  activeKeywords: string[],
+  rosterEntry?: RosterEntry | null
+): StudentStatusRow {
   const status = sr.repo_status;
   const snapshot = status?.snapshots;
   const hasSnapshot = Boolean(status?.latest_snapshot_id && snapshot);
@@ -57,6 +73,8 @@ export function toStudentStatusRow(sr: any, minCommits: number, activeKeywords: 
   return {
     id: sr.id,
     studentNo: sr.student_no || null,
+    studentName: rosterEntry?.name || sr.student_name || null,
+    githubLogin: rosterEntry?.githubLogin || sr.profiles?.github_login || null,
     fullName: sr.full_name,
     repoName: (sr.full_name || "").split("/").pop() || sr.full_name,
     submitState,

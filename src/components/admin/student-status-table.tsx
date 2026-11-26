@@ -6,15 +6,15 @@ import { ArrowUpRight, Check, Search, X } from "lucide-react";
 import type { StudentStatusRow } from "@/lib/admin/student-status-rows";
 import { formatKstDateTime } from "@/lib/student/time-utils";
 
-/** 과제 관리 화면 오른쪽 "학생별 제출 현황" 표 (학번 검색) */
+/** 과제 관리 화면 오른쪽 "학생별 제출 현황" 표 (학번·이름 검색) */
 export function StudentStatusTable({ rows }: { rows: StudentStatusRow[] }) {
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return rows;
-    return rows.filter(
-      (r) => (r.studentNo || "").toLowerCase().includes(q) || r.repoName.toLowerCase().includes(q)
+    return rows.filter((r) =>
+      [r.studentNo, r.studentName, r.repoName].some((v) => (v || "").toLowerCase().includes(q))
     );
   }, [rows, query]);
 
@@ -31,18 +31,19 @@ export function StudentStatusTable({ rows }: { rows: StudentStatusRow[] }) {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="학번으로 검색"
-            aria-label="학번으로 검색"
+            placeholder="학번 · 이름 검색"
+            aria-label="학번, 이름으로 검색"
             className="w-full rounded-xl bg-chip py-3 pl-10 pr-4 text-[13px] text-fg placeholder:text-fg-3 focus:outline-none focus:ring-2 focus:ring-brand/30"
           />
         </label>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] text-left">
+        <table className="w-full min-w-[800px] text-left">
           <thead className="border-b border-line text-[12px] text-fg-3">
             <tr>
               <th className="py-3 pr-4 font-medium">학번</th>
+              <th className="py-3 pr-4 font-medium">이름</th>
               <th className="py-3 pr-4 font-medium">Repository</th>
               <th className="py-3 pr-4 font-medium">제출</th>
               <th className="py-3 pr-4 font-medium">커밋</th>
@@ -53,7 +54,7 @@ export function StudentStatusTable({ rows }: { rows: StudentStatusRow[] }) {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-12 text-center text-[14px] text-fg-3">
+                <td colSpan={7} className="py-12 text-center text-[14px] text-fg-3">
                   {rows.length === 0 ? "매핑된 학생 repo가 아직 없어요." : `"${query}"와 일치하는 학생이 없어요.`}
                 </td>
               </tr>
@@ -68,6 +69,9 @@ export function StudentStatusTable({ rows }: { rows: StudentStatusRow[] }) {
                     >
                       {r.studentNo || "-"}
                     </Link>
+                  </td>
+                  <td className="whitespace-nowrap py-3.5 pr-4 text-fg">
+                    {r.studentName || <span className="text-fg-3">–</span>}
                   </td>
                   <td className="py-3.5 pr-4">
                     <a

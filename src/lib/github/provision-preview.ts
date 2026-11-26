@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getInstallationOctokit } from "@/lib/github/app";
-import { loadSecretRoster, RosterNotConfiguredError } from "@/lib/roster/secret-roster";
+import { loadOrgRoster, RosterEmptyError } from "@/lib/roster/org-roster";
 import {
   DEFAULT_CLASS_CODE,
   buildRepoPrefix,
@@ -25,18 +25,13 @@ export async function listOrgRepos(octokit: any, org: string): Promise<any[]> {
 
 /**
  * repo 일괄 생성 미리보기.
- * 시크릿 명단 기준으로 학생별 예정 repo 이름, 이미 존재하는지, GitHub ID(와 출처)를 계산한다.
+ * org 학생 명단(학생 관리에서 업로드) 기준으로 학생별 예정 repo 이름, 이미 존재하는지, GitHub ID(와 출처)를 계산한다.
  * 호출 전에 반드시 Owner 권한을 확인해야 한다(명단 정보를 응답에 포함하므로).
  */
 export async function buildProvisionPreview(org: string, prefix: string | null) {
-  let roster;
-  try {
-    roster = await loadSecretRoster();
-  } catch (err) {
-    if (err instanceof RosterNotConfiguredError) {
-      return { rosterConfigured: false as const, error: err.message };
-    }
-    throw err;
+  const rosterStudents = await loadOrgRoster(org);
+  if (rosterStudents.length === 0) {
+    return { rosterConfigured: false as const, error: new RosterEmptyError(org).message };
   }
 
   // Organization의 기존 repo 이름과 템플릿 repo 목록
@@ -59,7 +54,7 @@ export async function buildProvisionPreview(org: string, prefix: string | null) 
   const currentRepoPrefix = prefix ? buildRepoPrefix(prefix) : null;
   const emailSearch: EmailSearchState = { rateLimited: false };
   const verifiedUsers = await loadVerifiedEmailIndex();
-  const resolutions = await mapWithConcurrency(roster.students, LOOKUP_CONCURRENCY, (student) =>
+  const resolutions = await mapWithConcurrency(rosterStudents, LOOKUP_CONCURRENCY, (student) =>
     resolveStudentLogin({
       octokit,
       org,
@@ -73,15 +68,15 @@ export async function buildProvisionPreview(org: string, prefix: string | null) 
 
   return {
     rosterConfigured: true as const,
-    rosterSource: roster.source,
     orgName: org,
     classCode: DEFAULT_CLASS_CODE,
     prefix,
     repoPrefix: currentRepoPrefix,
     templates,
     githubWarning,
-    invalidRows: roster.errors,
-    students: roster.students.map((s, i) => {
+    // 형식 오류 행은 업로드 단계에서 거부하므로 저장된 명단에는 없다
+    invalidRows: [] as { line: number; reason: string }[],
+    students: rosterStudents.map((s, i) => {
       const repoName = prefix ? buildStudentRepoName(prefix, s.studentNo) : null;
       const { resolved, missingReason } = resolutions[i];
       return {

@@ -35,8 +35,6 @@ interface PreviewStudent {
 
 interface PreviewData {
   rosterConfigured: boolean;
-  /** 명단을 읽은 곳: 로컬 파일(secrets/roster.csv) / 환경변수(ROSTER_CSV_BASE64) */
-  rosterSource?: "file" | "env";
   error?: string;
   orgName?: string;
   prefix?: string | null;
@@ -139,7 +137,7 @@ function GithubLoginCell({ student }: { student: PreviewStudent }) {
 
 /**
  * 관리자 과제 목록 화면의 "학생 Repo 일괄 생성".
- * 과제 접두사로 과제를 찾거나 새로 만든 뒤, 학생 명단(시크릿)대로 repo를 만든다.
+ * 과제 접두사로 과제를 찾거나 새로 만든 뒤, 학생 관리에서 올린 명단대로 repo를 만든다.
  */
 export function CreateStudentReposPanel({
   orgName,
@@ -336,7 +334,7 @@ export function CreateStudentReposPanel({
           <div>
             <h3 className="text-[16px] font-bold">학생 Repo 일괄 생성 · {orgName}</h3>
             <p className="text-[11px] text-fg-3 mt-0.5">
-              학생 명단(시크릿)대로 private repo를 만들고, 각 학생 1명만 push 권한 collaborator로 등록합니다.
+              학생 관리에서 올린 명단대로 private repo를 만들고, 각 학생 1명만 push 권한 collaborator로 등록합니다.
               명단에 GitHub ID가 없으면 이전 과제 repo의 collaborator → 학생이 GitRepoTrack 로그인 때 확인된 GitHub 이메일 → 공개 이메일 검색 순으로 찾습니다.
             </p>
           </div>
@@ -406,19 +404,20 @@ export function CreateStudentReposPanel({
 
           {preview && !preview.rosterConfigured && (
             <div className="rounded-lg bg-amber-50 dark:bg-amber-950/50 p-3 text-xs text-amber-800 dark:text-amber-200">
-              {preview.error}
+              {preview.error}{" "}
+              <Link href={`/admin/students?org=${encodeURIComponent(orgName)}`} className="font-semibold underline">
+                학생 관리로 이동
+              </Link>
             </div>
           )}
 
-          {/* 명단 출처: 로컬 파일과 환경변수 중 무엇을 읽었는지 */}
+          {/* 명단 출처: 학생 관리에서 업로드한 org 명단 */}
           {preview?.rosterConfigured && (
             <p className="text-[11px] text-fg-3">
-              명단 출처:{" "}
-              <strong>
-                {preview.rosterSource === "file"
-                  ? "secrets/roster.csv (로컬 파일)"
-                  : "환경변수 ROSTER_CSV_BASE64"}
-              </strong>{" "}
+              명단:{" "}
+              <Link href={`/admin/students?org=${encodeURIComponent(orgName)}`} className="font-semibold hover:underline">
+                학생 관리
+              </Link>{" "}
               · {students.length}명
             </p>
           )}

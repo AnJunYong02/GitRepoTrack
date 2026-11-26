@@ -1,6 +1,6 @@
 /**
  * 학생 명단 CSV 파서 (순수 함수).
- * 실제 파일/환경변수 읽기는 server-only 모듈인 secret-roster.ts에서 담당한다.
+ * DB 저장·조회는 server-only 모듈인 org-roster.ts에서 담당한다.
  */
 
 export interface RosterStudent {
@@ -32,19 +32,6 @@ const STUDENT_NO_PATTERN = /^[0-9]{6,10}$/;
 // GitHub 아이디: 영문/숫자/하이픈, 최대 39자, 하이픈으로 시작 불가
 const GITHUB_LOGIN_PATTERN = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,38})$/;
 const EMAIL_PATTERN = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
-
-export type RosterSource = "file" | "env";
-
-/**
- * 명단을 어디서 읽을지 결정한다.
- * 로컬 파일(secrets/roster.csv)이 있으면 파일을 우선한다 — Vercel에는 파일이 배포되지 않으므로
- * 운영에서는 항상 환경변수를 쓰고, 로컬에서는 파일을 바꾸면 바로 반영된다.
- */
-export function chooseRosterSource(fileExists: boolean, hasEnvValue: boolean): RosterSource | null {
-  if (fileExists) return "file";
-  if (hasEnvValue) return "env";
-  return null;
-}
 
 function normalizeHeader(value: string): string {
   return value.toLowerCase().replace(/[\s_\-()]/g, "");

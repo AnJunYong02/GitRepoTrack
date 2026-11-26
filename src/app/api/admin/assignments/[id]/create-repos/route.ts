@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { guardErrorStatus, requireAssignmentOwner } from "@/lib/auth/guards";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getInstallationOctokit, normalizeOrgName } from "@/lib/github/app";
-import { loadSecretRoster } from "@/lib/roster/secret-roster";
+import { RosterEmptyError, requireOrgRoster } from "@/lib/roster/org-roster";
 import {
   buildRepoPrefix,
   buildStudentRepoName,
@@ -79,9 +79,9 @@ export async function POST(
         ? body.templateRepo
         : undefined;
 
-    // 학생 정보는 클라이언트가 보낸 값이 아니라 서버의 시크릿 명단에서만 가져온다
-    const roster = await loadSecretRoster();
-    const byStudentNo = new Map(roster.students.map((s) => [s.studentNo, s]));
+    // 학생 정보는 클라이언트가 보낸 값이 아니라 서버에 저장된 org 명단(학생 관리)에서만 가져온다
+    const rosterStudents = await requireOrgRoster(assignment.org_name);
+    const byStudentNo = new Map(rosterStudents.map((s) => [s.studentNo, s]));
 
     // 최종 접두사(assign10-c01)를 과제에 저장해 다음에도 재사용
     const repoPrefix = buildRepoPrefix(prefix);
@@ -120,7 +120,7 @@ export async function POST(
           studentNo,
           repoName: buildStudentRepoName(prefix, studentNo),
           ok: false,
-          error: "시크릿 명단에 없는 학번입니다.",
+          error: "학생 명단에 없는 학번입니다.",
         });
         continue;
       }
@@ -158,7 +158,7 @@ export async function POST(
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || "repo 생성 중 오류가 발생했습니다." },
-      { status: guardErrorStatus(err) }
+      { status: err instanceof RosterEmptyError ? 400 : guardErrorStatus(err) }
     );
   }
 }

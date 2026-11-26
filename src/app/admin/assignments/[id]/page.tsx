@@ -8,6 +8,7 @@ import { summarizeStatusRows, toStudentStatusRow } from "@/lib/admin/student-sta
 import { formatAssignmentTitle } from "@/lib/admin/assignment-title";
 import { formatKstDateTime } from "@/lib/student/time-utils";
 import { ANALYSIS_BRANCH } from "@/lib/assignments/branch";
+import { loadOrgRoster } from "@/lib/roster/org-roster";
 import { CriteriaForm } from "@/components/admin/criteria-form";
 import { AddRepoForm } from "@/components/admin/add-repo-form";
 import { BatchAnalyzeButton } from "@/components/admin/batch-analyze-button";
@@ -80,6 +81,7 @@ export default async function AdminAssignmentDetailPage({
       id,
       full_name,
       student_no,
+      student_name,
       github_id,
       profiles (
         github_login
@@ -116,7 +118,12 @@ export default async function AdminAssignmentDetailPage({
     activeVersion?.rules?.readme?.headerKeywords || activeVersion?.rules?.readmeKeywords || [];
 
   // 표·요약 숫자 (규칙은 src/lib/admin/student-status-rows.ts)
-  const rows = (studentRepos || []).map((sr: any) => toStudentStatusRow(sr, minCommits, activeKeywords));
+  // 학생 관리 명단(학번 → 이름·GitHub ID). Owner 확인 후에만 읽는다
+  const roster = await loadOrgRoster(assignment.org_name).catch(() => []);
+  const rosterByNo = new Map(roster.map((s) => [s.studentNo, { name: s.name, githubLogin: s.githubLogin }]));
+  const rows = (studentRepos || []).map((sr: any) =>
+    toStudentStatusRow(sr, minCommits, activeKeywords, sr.student_no ? rosterByNo.get(sr.student_no) : null)
+  );
   const summary = summarizeStatusRows(rows);
   const submittedPct = summary.total ? Math.round((summary.submitted / summary.total) * 100) : 0;
   const unsubmittedPct = summary.total ? Math.round((summary.unsubmitted / summary.total) * 100) : 0;

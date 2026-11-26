@@ -78,3 +78,33 @@ describe("summarizeStatusRows", () => {
     ).toEqual({ total: 4, submitted: 2, pending: 1, unsubmitted: 1 });
   });
 });
+
+describe("toStudentStatusRow - 명단 정보", () => {
+  it("학생 관리 명단 값을 우선한다", () => {
+    const r = toStudentStatusRow(
+      row({ student_name: "예전이름", profiles: { github_login: "old-login" } }),
+      3,
+      [],
+      { name: "홍길동", githubLogin: "octocat" }
+    );
+    expect(r.studentName).toBe("홍길동");
+    expect(r.githubLogin).toBe("octocat");
+  });
+
+  it("명단이 없으면 student_name과 프로필 로그인으로 대체한다", () => {
+    const r = toStudentStatusRow(row({ student_name: "김철수", profiles: { github_login: "kim" } }), 3, []);
+    expect(r.studentName).toBe("김철수");
+    expect(r.githubLogin).toBe("kim");
+  });
+
+  it("명단에 GitHub ID가 비어 있으면 프로필 로그인을 쓴다", () => {
+    const r = toStudentStatusRow(row({ profiles: { github_login: "kim" } }), 3, [], { name: "김철수", githubLogin: null });
+    expect(r.githubLogin).toBe("kim");
+  });
+
+  it("아무 정보도 없으면 null", () => {
+    const r = toStudentStatusRow(row(), 3, []);
+    expect(r.studentName).toBeNull();
+    expect(r.githubLogin).toBeNull();
+  });
+});

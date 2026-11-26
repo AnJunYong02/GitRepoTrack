@@ -20,6 +20,7 @@ import {
   Sun,
   Trophy,
   User,
+  Users,
 } from "lucide-react";
 
 import { useThemeToggle } from "@/components/theme-toggle";
@@ -28,7 +29,7 @@ import { RepoRefreshButton } from "@/components/admin/repo-refresh-button";
 import type { StudentStatusCounts } from "@/lib/student/student-assignments";
 import { SIDEBAR_COOKIE } from "@/components/student/sidebar-cookie";
 
-export type StudentNavKey = "dashboard" | "assignments" | "leaderboard" | "admin" | "none";
+export type StudentNavKey = "dashboard" | "assignments" | "leaderboard" | "admin" | "students" | "none";
 
 export interface StudentSidebarProps {
   /** student: 학생 화면 메뉴, admin: org Owner(교수·TA) 관리 화면 메뉴 */
@@ -157,6 +158,12 @@ export function StudentSidebar({
             icon={<ClipboardList className="h-[18px] w-[18px]" />}
             label="과제 관리"
             active={active === "admin"}
+          />
+          <NavItem
+            href={`/admin/students${q}`}
+            icon={<Users className="h-[18px] w-[18px]" />}
+            label="학생 관리"
+            active={active === "students"}
           />
           {leaderboardHref && (
             <NavItem
