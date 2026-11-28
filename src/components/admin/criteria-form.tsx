@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X, CheckCircle } from "lucide-react";
+import { KeywordTransfer } from "./keyword-transfer";
 import { isoToKstLocalInput, kstLocalInputToIso } from "@/lib/admin/deadline-input";
 
 interface CriteriaFormProps {
@@ -12,6 +13,7 @@ interface CriteriaFormProps {
   initialRules?: {
     branch?: string;
     minCommits?: number;
+    readmeKeywords?: string[];
     requiredFiles?: { type: "glob_exists" | "path_exists"; pattern?: string; path?: string; label: string }[];
     readme?: {
       required?: boolean;
@@ -26,7 +28,7 @@ export function CriteriaForm({ assignmentId, initialDeadlineAt, initialRules, on
   const [minCommits, setMinCommits] = useState<number>(initialRules?.minCommits || 0);
   const [readmeRequired, setReadmeRequired] = useState(initialRules?.readme?.required ?? true);
   const [keywords, setKeywords] = useState<string[]>(
-    initialRules?.readme?.headerKeywords || []
+    initialRules?.readme?.headerKeywords ?? initialRules?.readmeKeywords ?? []
   );
   // datetime-local 값 (한국 시간 기준 "YYYY-MM-DDTHH:mm")
   const [deadline, setDeadline] = useState(() => isoToKstLocalInput(initialDeadlineAt));
@@ -39,7 +41,7 @@ export function CriteriaForm({ assignmentId, initialDeadlineAt, initialRules, on
     if (!newKeywordInput.trim()) return;
 
     // Split by comma: e.g. "프로젝트 구조, 실행방법"
-    const rawItems = newKeywordInput.split(",");
+    const rawItems = newKeywordInput.split(/[,\r\n]+/);
     const newKeywordsToAdd: string[] = [];
 
     for (const item of rawItems) {
@@ -86,7 +88,7 @@ export function CriteriaForm({ assignmentId, initialDeadlineAt, initialRules, on
         deadlineAt,
         rules: {
           minCommits: Number(minCommits) || 0,
-          requiredFiles: [],
+          requiredFiles: initialRules?.requiredFiles ?? [],
           readme: {
             required: readmeRequired,
             headerKeywords: keywords,
@@ -130,6 +132,8 @@ export function CriteriaForm({ assignmentId, initialDeadlineAt, initialRules, on
           {errorMsg}
         </p>
       )}
+
+      <KeywordTransfer keywords={keywords} onChange={setKeywords} />
 
       {/* README 필수 키워드 */}
       <div className="space-y-3">

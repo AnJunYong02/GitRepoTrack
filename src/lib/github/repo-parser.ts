@@ -5,6 +5,7 @@ export interface ParsedRepoInfo {
   category: string; // e.g. "assign01", "assign02", "other"
   categoryLabel: string; // e.g. "과제 1차 (assign01)"
   studentNo: string | null; // e.g. "22100063"
+  githubLogin?: string;
   classCode: string | null; // e.g. "c01"
   isStudentRepo: boolean;
   htmlUrl?: string;
@@ -54,6 +55,20 @@ export function parseRepoName(repo: {
   updated_at?: string;
 }): ParsedRepoInfo {
   const name = repo.name.trim();
+
+  // The org prefix identifies the new convention without treating old numeric student IDs as logins.
+  const org = repo.full_name.split("/")[0];
+  const courseName = name.toLowerCase().startsWith(`${org.toLowerCase()}-`) ? name.slice(org.length + 1) : null;
+  const modern = courseName?.match(/^(.+?)-(c[0-9]{2})-([a-z0-9]+(?:-[a-z0-9]+)*)$/i);
+  if (modern) {
+    return {
+      repoId: repo.id, name: repo.name, fullName: repo.full_name,
+      category: `${org}-${modern[1]}-${modern[2]}`.toLowerCase(),
+      categoryLabel: `${modern[1]} · ${modern[2].toLowerCase()}`,
+      studentNo: null, githubLogin: modern[3], classCode: modern[2].toLowerCase(),
+      isStudentRepo: true, htmlUrl: repo.html_url, updatedAt: repo.updated_at,
+    };
+  }
 
   // Pattern 1: prefix - classCode - studentNo (e.g. assign1-c01-22100063, assign08_midterm-c01-22100063)
   const pattern1 = name.match(/^([a-zA-Z0-9_]+?)[-_]([a-zA-Z0-9]+)[-_]([0-9]{6,10})$/);

@@ -189,11 +189,16 @@ export function OrgSelectorView({
       {/* 내 GitHub Organization */}
       <section aria-label="내 GitHub Organization" className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-[20px] font-bold tracking-tight text-fg">내 GitHub Organization</h2>
-          <button type="button" onClick={handleReconnectGitHub} disabled={isBusy} className={BTN_GRAY}>
-            <RefreshCw className={`h-3.5 w-3.5 ${isReconnecting ? "animate-spin" : ""}`} />
-            GitHub 다시 연결
-          </button>
+          <h2 className="text-[20px] font-bold tracking-tight text-fg">내 과목</h2>
+          <div className="flex flex-wrap gap-2">
+            <a href="https://github.com/organizations/plan" target="_blank" rel="noreferrer" className={BTN_GREEN}>
+              <PlusCircle className="h-4 w-4" /> 과목 추가 <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+            <button type="button" onClick={handleReconnectGitHub} disabled={isBusy} className={BTN_GRAY}>
+              <RefreshCw className={`h-3.5 w-3.5 ${isReconnecting ? "animate-spin" : ""}`} />
+              GitHub 다시 연결
+            </button>
+          </div>
         </div>
 
         {infoMsg && (
@@ -209,6 +214,7 @@ export function OrgSelectorView({
           </p>
         )}
 
+        <p className="text-[12px] text-fg-3">GitHub에서 과목 조직을 만든 뒤 ‘GitHub 다시 연결’을 눌러 등록하세요.</p>
         {/* Organization 행 목록 */}
         <ul className="divide-y divide-line border-y border-line">
           {organizations.length === 0 ? (

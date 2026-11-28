@@ -23,6 +23,7 @@ const SELECT_STUDENT_REPOS = `
   assignments (
     id,
     title,
+    description,
     org_name,
     deadline_at,
     branch,

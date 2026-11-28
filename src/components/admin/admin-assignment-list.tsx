@@ -22,6 +22,7 @@ import { formatKstMonthDay } from "@/lib/student/time-utils";
 export interface AdminAssignmentItemData {
   id: string;
   title: string;
+  preserveTitle?: boolean;
   orgName: string;
   branch: string;
   rankingMode: "live" | "none";
@@ -249,7 +250,7 @@ export function AdminAssignmentList({
     const matchedCat = categories.find(
       (c) =>
         c.existingAssignmentId === a.id ||
-        normalizeCategoryKey(c.category) === normTitleKey
+        (!c.existingAssignmentId && !a.preserveTitle && normalizeCategoryKey(c.category) === normTitleKey)
     );
     if (matchedCat) {
       matchedCatKeys.add(matchedCat.category);
@@ -444,7 +445,7 @@ export function AdminAssignmentList({
       {/* 과제 목록 / 그리드 */}
       {filteredEntries.length === 0 ? (
         <p className="border-y border-line py-12 text-center text-[14px] text-fg-3">
-          {query ? "검색어와 일치하는 과제가 없습니다." : "등록된 과제가 없습니다. 오른쪽 위 '학생 Repo 일괄 생성'으로 과제를 만들어 주세요."}
+          {query ? "검색어와 일치하는 과제가 없습니다." : "등록된 과제가 없습니다. 오른쪽 위 '과제 생성'으로 과제를 만들어 주세요."}
         </p>
       ) : (
         <ul className={layout === "grid" ? "grid grid-cols-1 gap-x-12 md:grid-cols-2" : ""}>
@@ -516,7 +517,7 @@ function AssignmentEntry({
 
   const a = entry.assignment!;
   const cat = entry.categoryData;
-  const title = formatAssignmentTitle(a.title, cat?.category);
+  const title = a.preserveTitle ? { label: a.title, isMidterm: false } : formatAssignmentTitle(a.title, cat?.category);
   const unsyncedCount = cat && cat.repos.length > a.totalStudents ? cat.repos.length - a.totalStudents : 0;
   const isImporting = cat ? importingCat === cat.category : false;
   const percent = a.totalStudents ? Math.round((a.submittedStudents / a.totalStudents) * 100) : 0;

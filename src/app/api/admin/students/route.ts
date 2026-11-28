@@ -1,3 +1,5 @@
+import { validateCreationStudent } from "@/lib/assignments/creation";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { guardErrorStatus, requireOrgOwner } from "@/lib/auth/guards";
 import { normalizeOrgName } from "@/lib/github/app";
@@ -82,5 +84,27 @@ export async function POST(req: Request) {
     return NextResponse.json({ count });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: guardErrorStatus(err) });
+  }
+}
+
+/** Add one student without replacing the CSV roster or overwriting an existing record. */
+export async function PATCH(req: Request) {
+  try {
+    const body = await req.json().catch(() => null);
+    const org = readOrg(body?.org);
+    if (!org) return NextResponse.json({ error: "과목을 선택하세요." }, { status: 400 });
+    const { user } = await requireOrgOwner(org);
+    let student;
+    try { student = validateCreationStudent(body?.student); }
+    catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
+    const { error } = await supabaseAdmin.from("org_students").insert({
+      org_name: org.toLowerCase(), student_no: student.studentNo, name: student.name,
+      github_login: student.githubLogin, emails: [], uploaded_by: user.id,
+    });
+    if (error?.code === "23505") return NextResponse.json({ error: "이미 명단에 등록된 학번입니다." }, { status: 409 });
+    if (error) throw error;
+    return NextResponse.json({ student });
+  } catch (error) {
+    return NextResponse.json({ error: "학생을 저장하지 못했습니다." }, { status: guardErrorStatus(error) });
   }
 }

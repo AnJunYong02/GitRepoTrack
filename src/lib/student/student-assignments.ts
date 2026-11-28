@@ -7,6 +7,7 @@ export interface StudentRepoItemData {
   fullName: string;
   assignmentId: string | null;
   assignmentTitle: string;
+  preserveTitle?: boolean;
   /** 주차 번호 (repo 이름 assign12 → 12, 없으면 제목의 "N주차", 그래도 없으면 null) */
   weekNo: number | null;
   branch: string;
@@ -158,6 +159,7 @@ export function toStudentRepoItem(sr: any): StudentRepoItemData {
     fullName: sr.full_name,
     assignmentId: assignment?.id || null,
     assignmentTitle: assignment?.title || "과제",
+    preserveTitle: assignment?.description === "RepoTrack assignment creation v1",
     weekNo: extractWeekNo(sr.full_name, assignment?.title),
     branch: assignment?.branch || "main",
     rankingMode: assignment?.ranking_mode === "none" ? "none" : "live",
