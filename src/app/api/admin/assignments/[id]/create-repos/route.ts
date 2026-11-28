@@ -1,164 +1,83 @@
 import { NextResponse } from "next/server";
 import { guardErrorStatus, requireAssignmentOwner } from "@/lib/auth/guards";
-import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getInstallationOctokit, normalizeOrgName } from "@/lib/github/app";
-import { RosterEmptyError, requireOrgRoster } from "@/lib/roster/org-roster";
+import { getInstallationOctokit } from "@/lib/github/app";
 import {
-  buildRepoPrefix,
-  buildStudentRepoName,
-  normalizeAssignmentPrefix,
-} from "@/lib/github/student-repo-name";
+  CreationError,
+  loadCreationPlan,
+} from "@/lib/assignments/creation-plan";
+import { MAX_CREATION_REQUEST_BYTES } from "@/lib/assignments/creation";
 import {
-  describeGitHubError,
-  EmailSearchState,
-  loadVerifiedEmailIndex,
-  provisionStudentRepo,
-  resolveStudentLogin,
-} from "@/lib/github/create-student-repos";
-import type { OrgRepoSummary } from "@/lib/github/previous-repo-login";
-import { listOrgRepos } from "@/lib/github/provision-preview";
+  initialFilesManifest,
+  validateInitialFiles,
+} from "@/lib/github/initial-files";
+import { createAssignmentRepo } from "@/lib/github/create-assignment-repo";
 import { safeRevalidateTag } from "@/lib/cache/shared-cache";
 import { orgReposTag } from "@/lib/cache/cache-keys";
 
 export const runtime = "nodejs";
-// Vercel 함수 실행 시간 제한 대비: 요청당 최대 MAX_PER_REQUEST명만 처리하고 클라이언트가 나눠 호출한다
-export const maxDuration = 60;
-const MAX_PER_REQUEST = 5;
+export const maxDuration = 300;
 
-/**
- * 과제를 조회하고, 요청자가 그 과제 Organization의 Owner인지 확인한다.
- * (없으면 404, Owner가 아니면 403 에러를 던진다)
- */
-async function loadOwnedAssignment(assignmentId: string) {
-  const { assignment } = await requireAssignmentOwner(assignmentId);
-  return {
-    assignment: {
-      id: assignment.id as string,
-      org_name: normalizeOrgName(assignment.org_name),
-      repo_prefix: (assignment.repo_prefix ?? null) as string | null,
-    },
-  };
-}
-
-/**
- * POST: 선택한 학생(최대 5명)의 repo 생성 + collaborator 등록 + student_repos 등록
- * 관리자 과제 목록 화면의 "학생 Repo 일괄 생성" 모달이 /api/admin/repo-provisioning으로
- * 과제 id를 확보한 뒤 5명씩 나눠 호출한다.
- * body: { prefix: string, studentNos: string[], templateRepo?: string }
- */
+/** One student at a time bounds GitHub requests and makes partial failures retryable. */
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id: assignmentId } = await params;
-    const loaded = await loadOwnedAssignment(assignmentId);
-    const { assignment } = loaded;
-
-    const body = await req.json().catch(() => ({}));
-    const prefix = normalizeAssignmentPrefix(String(body.prefix || ""));
-    if (!prefix) {
-      return NextResponse.json(
-        { error: "과제 접두사는 영문/숫자/밑줄만 사용할 수 있습니다. (예: assign10)" },
-        { status: 400 }
+    const { id } = await params;
+    const { user, assignment } = await requireAssignmentOwner(id);
+    const plan = await loadCreationPlan(id);
+    if (!plan)
+      throw new CreationError(
+        "이 과제의 생성 설정이 없습니다. 과제 생성을 새로 시작하세요.",
       );
-    }
-
-    const studentNos: string[] = Array.isArray(body.studentNos)
-      ? body.studentNos.map((n: unknown) => String(n))
-      : [];
-    if (studentNos.length === 0 || studentNos.length > MAX_PER_REQUEST) {
-      return NextResponse.json(
-        { error: `한 번에 1~${MAX_PER_REQUEST}명씩 요청해야 합니다.` },
-        { status: 400 }
-      );
-    }
-
-    const templateRepo =
-      typeof body.templateRepo === "string" && /^[a-zA-Z0-9._-]+$/.test(body.templateRepo)
-        ? body.templateRepo
-        : undefined;
-
-    // 학생 정보는 클라이언트가 보낸 값이 아니라 서버에 저장된 org 명단(학생 관리)에서만 가져온다
-    const rosterStudents = await requireOrgRoster(assignment.org_name);
-    const byStudentNo = new Map(rosterStudents.map((s) => [s.studentNo, s]));
-
-    // 최종 접두사(assign10-c01)를 과제에 저장해 다음에도 재사용
-    const repoPrefix = buildRepoPrefix(prefix);
-    if (assignment.repo_prefix !== repoPrefix) {
-      await supabaseAdmin
-        .from("assignments")
-        .update({ repo_prefix: repoPrefix, updated_at: new Date().toISOString() })
-        .eq("id", assignment.id);
-    }
-
-    let octokit;
+    if (
+      plan.created_by !== user.id ||
+      plan.created_by !== assignment.created_by
+    )
+      throw new CreationError("이 과제를 생성한 계정으로 진행하세요.", 403);
+    if (Number(req.headers.get("Content-Length")) > MAX_CREATION_REQUEST_BYTES)
+      throw new CreationError("초기 파일이 너무 큽니다.");
+    const raw = await req.text();
+    if (Buffer.byteLength(raw) > MAX_CREATION_REQUEST_BYTES)
+      throw new CreationError("초기 파일이 너무 큽니다.");
+    let body;
+    let files;
     try {
-      octokit = await getInstallationOctokit(assignment.org_name);
-    } catch (err) {
-      return NextResponse.json({ error: describeGitHubError(err) }, { status: 502 });
+      body = JSON.parse(raw);
+      files = validateInitialFiles(body.files);
+    } catch {
+      throw new CreationError("초기 파일을 다시 확인하세요.");
     }
-
-    // CSV에 GitHub ID가 없는 학생을 위해 이전 과제 repo를 찾을 org repo 목록 (클라이언트 값은 쓰지 않음)
-    const needsLookup = studentNos.some((no) => {
-      const s = byStudentNo.get(no);
-      return s && !s.githubLogin;
-    });
-    const orgRepos: OrgRepoSummary[] = needsLookup
-      ? await listOrgRepos(octokit, assignment.org_name).catch(() => [])
-      : [];
-
-    // GitHub API 속도 제한을 피하려고 순차 처리
-    const emailSearch: EmailSearchState = { rateLimited: false };
-    // CSV에 GitHub ID가 없는 학생이 있을 때만 로그인 인증 이메일 목록을 조회
-    const verifiedUsers = needsLookup ? await loadVerifiedEmailIndex() : [];
-    const results = [];
-    for (const studentNo of studentNos) {
-      const student = byStudentNo.get(studentNo);
-      if (!student) {
-        results.push({
-          studentNo,
-          repoName: buildStudentRepoName(prefix, studentNo),
-          ok: false,
-          error: "학생 명단에 없는 학번입니다.",
-        });
-        continue;
-      }
-      results.push(
-        await provisionStudentRepo({
-          octokit,
-          org: assignment.org_name,
-          assignmentId: assignment.id,
-          assignmentPrefix: prefix,
-          student,
-          templateRepo,
-          // CSV 값이 없을 때: 이전 과제 repo → 학교 이메일 검색 (서버에서 다시 결정)
-          resolveLogin: async () =>
-            (
-              await resolveStudentLogin({
-                octokit,
-                org: assignment.org_name,
-                student,
-                orgRepos,
-                currentRepoPrefix: repoPrefix,
-                emailSearch,
-                verifiedUsers,
-              })
-            ).resolved,
-        })
+    if (
+      JSON.stringify(initialFilesManifest(files)) !== JSON.stringify(plan.files)
+    )
+      throw new CreationError(
+        "초기 파일이 변경되었습니다. 원래 선택한 파일로 다시 시도하세요.",
+        409,
       );
-    }
-
-    // 새 repo를 만들었으면 org repo 목록 공유 캐시를 무효화 (다음 조회 때 GitHub에서 다시 가져옴)
-    if (results.some((r: any) => r.created)) {
-      safeRevalidateTag(orgReposTag(assignment.org_name));
-    }
-
-    return NextResponse.json({ results });
-  } catch (err: any) {
+    const student = plan.students.find(
+      (student) => student.studentNo === body.studentNo,
+    );
+    if (!student)
+      throw new CreationError("이 과제의 생성 대상에 없는 학생입니다.");
+    const octokit = await getInstallationOctokit(plan.org_name);
+    const result = await createAssignmentRepo(octokit, plan, student, files);
+    safeRevalidateTag(orgReposTag(plan.org_name));
+    return NextResponse.json({ result });
+  } catch (error) {
     return NextResponse.json(
-      { error: err.message || "repo 생성 중 오류가 발생했습니다." },
-      { status: err instanceof RosterEmptyError ? 400 : guardErrorStatus(err) }
+      {
+        error:
+          error instanceof CreationError
+            ? error.message
+            : "저장소 생성에 실패했습니다. 다시 시도하세요.",
+      },
+      {
+        status:
+          error instanceof CreationError
+            ? error.status
+            : guardErrorStatus(error),
+      },
     );
   }
 }

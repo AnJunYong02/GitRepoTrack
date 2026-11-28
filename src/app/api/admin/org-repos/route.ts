@@ -91,6 +91,16 @@ export async function GET(req: Request) {
     }
     const fromCache = !fetchedFromGitHub;
 
+    // 3. Fetch existing assignments from DB scoped to targetOrg (case-insensitive)
+    // DB에서 현재 org 과제만 조회 (ilike: 대소문자 무시, org 이름의 _ 와일드카드는 이스케이프)
+    const { data: orgAssignments } = await supabaseAdmin
+      .from("assignments")
+      .select("id, title, branch, org_name, repo_prefix, student_repos(repo_id)")
+      .ilike("org_name", escapeLikePattern(targetOrg))
+      .order("created_at", { ascending: false });
+
+    const assignments = orgAssignments || [];
+
     // 2. Parse and group repositories
     const categoryMap = new Map<
       string,
@@ -110,37 +120,26 @@ export async function GET(req: Request) {
         updated_at: r.updated_at,
       });
 
-      if (!categoryMap.has(parsed.category)) {
-        categoryMap.set(parsed.category, {
-          category: parsed.category,
-          label: parsed.categoryLabel,
+      const registered = assignments.find((assignment) => assignment.student_repos.some((studentRepo) => studentRepo.repo_id === r.id));
+      const groupKey = registered ? `assignment:${registered.id}` : parsed.category;
+      if (!categoryMap.has(groupKey)) {
+        categoryMap.set(groupKey, {
+          category: groupKey,
+          label: registered?.title ?? parsed.categoryLabel,
           repos: [],
         });
       }
 
-      categoryMap.get(parsed.category)!.repos.push(parsed);
+      categoryMap.get(groupKey)!.repos.push(parsed);
     }
 
-    // 3. Fetch existing assignments from DB scoped to targetOrg (case-insensitive)
-    // DB에서 현재 org 과제만 조회 (ilike: 대소문자 무시, org 이름의 _ 와일드카드는 이스케이프)
-    const { data: orgAssignments } = await supabaseAdmin
-      .from("assignments")
-      .select("id, title, branch, org_name, student_repos(count)")
-      .ilike("org_name", escapeLikePattern(targetOrg))
-      .order("created_at", { ascending: false });
-
-    const assignments = orgAssignments || [];
-
-    const categories = Array.from(categoryMap.values()).map((c) => {
+    const parsedCategories = Array.from(categoryMap.values()).map((c) => {
       // Sort repos by studentNo
       c.repos.sort((a, b) => (a.studentNo || a.name).localeCompare(b.studentNo || b.name));
 
       // Check if assignment matching this category exists in this Organization
-      const matchedAssignment = assignments.find(
-        (a) =>
-          a.title.toLowerCase().includes(c.category.toLowerCase()) ||
-          a.title.toLowerCase().includes(c.label.toLowerCase())
-      );
+      const matchedAssignment = assignments.find((a) => `assignment:${a.id}` === c.category || a.repo_prefix?.toLowerCase() === c.category)
+        ?? assignments.find((a) => !a.repo_prefix && (a.title.toLowerCase().includes(c.category.toLowerCase()) || a.title.toLowerCase().includes(c.label.toLowerCase())));
 
       return {
         category: c.category,
@@ -150,9 +149,21 @@ export async function GET(req: Request) {
         repos: c.repos,
         existingAssignmentId: matchedAssignment?.id,
         existingAssignmentTitle: matchedAssignment?.title,
-        existingRepoCount: (matchedAssignment as any)?.student_repos?.[0]?.count ?? 0,
+        existingRepoCount: matchedAssignment?.student_repos?.length ?? 0,
       };
     });
+
+    // Registered assignments can include both custom names and still-unmapped conventional names.
+    const byAssignment = new Map<string, (typeof parsedCategories)[number]>();
+    for (const category of parsedCategories) {
+      const key = category.existingAssignmentId ?? category.category;
+      const current = byAssignment.get(key);
+      if (current) {
+        current.repos.push(...category.repos);
+        current.count = current.repos.length;
+      } else byAssignment.set(key, category);
+    }
+    const categories = [...byAssignment.values()];
 
     // Sort categories: newest first (e.g. assign10, assign09, assign08_midterm, ... assign01), then other at the end
     categories.sort((a, b) => {

@@ -75,7 +75,7 @@ export function HomeHero({ item, nowMs }: { item: StudentRepoItemData; nowMs: nu
     : null;
   const isOpen = deadline.at ? new Date(deadline.at).getTime() > nowMs : false;
 
-  const subject = item.weekNo !== null ? `${item.weekNo}주차 과제,` : `${item.assignmentTitle},`;
+  const subject = item.preserveTitle ? `${item.assignmentTitle},` : item.weekNo !== null ? `${item.weekNo}주차 과제,` : `${item.assignmentTitle},`;
 
   return (
     <section aria-label="이번 주 과제" className="grid grid-cols-1 items-center gap-10 xl:grid-cols-[minmax(0,1fr)_minmax(0,500px)_auto] xl:gap-14">

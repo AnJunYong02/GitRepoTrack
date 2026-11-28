@@ -65,3 +65,10 @@ describe("repo-parser", () => {
     expect(parsed.studentNo).toBeNull();
   });
 });
+
+it("groups the new naming convention per course and section while keeping hyphenated logins", () => {
+  const name = "course-web-week01-c02-test-student";
+  expect(parseRepoName({ id: 1, name, full_name: `course-web/${name}` })).toMatchObject({
+    category: "course-web-week01-c02", classCode: "c02", studentNo: null, githubLogin: "test-student", isStudentRepo: true,
+  });
+});

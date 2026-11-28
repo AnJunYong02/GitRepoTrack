@@ -96,6 +96,7 @@ export default async function AdminAssignmentsPage({
       branch,
       deadline_at,
       ranking_mode,
+      description,
       created_at,
       student_repos (
         id,
@@ -137,6 +138,7 @@ export default async function AdminAssignmentsPage({
     return {
       id: a.id,
       title: a.title,
+      preserveTitle: a.description === "RepoTrack assignment creation v1",
       orgName: a.org_name,
       branch: a.branch,
       rankingMode: a.ranking_mode === "none" ? "none" : "live",

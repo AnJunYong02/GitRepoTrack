@@ -233,7 +233,7 @@ function AssignmentRow({ item, isCurrent, nowMs }: { item: StudentRepoItemData; 
         <span className={`h-2 w-2 shrink-0 rounded-full ${DOT[status]}`} aria-label={status} />
         <div className="min-w-0">
           <p className="truncate text-[15px] font-bold text-fg">
-            {item.weekNo !== null ? `과제 ${item.weekNo}주차` : weekTitle(null, item.assignmentTitle)}
+            {item.preserveTitle ? item.assignmentTitle : item.weekNo !== null ? `과제 ${item.weekNo}주차` : weekTitle(null, item.assignmentTitle)}
           </p>
           <a
             href={`https://github.com/${item.fullName}`}

@@ -129,7 +129,7 @@ export default async function AdminAssignmentDetailPage({
   const submittedPct = summary.total ? Math.round((summary.submitted / summary.total) * 100) : 0;
   const unsubmittedPct = summary.total ? Math.round((summary.unsubmitted / summary.total) * 100) : 0;
 
-  const title = formatAssignmentTitle(assignment.title);
+  const title = assignment.description === "RepoTrack assignment creation v1" ? { label: assignment.title, isMidterm: false } : formatAssignmentTitle(assignment.title);
   const orgQuery = `?org=${encodeURIComponent(assignment.org_name)}`;
 
   return (
